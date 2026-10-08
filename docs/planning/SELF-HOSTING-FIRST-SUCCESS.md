@@ -15,7 +15,7 @@
 - `.gitignore` 已排除 `public/site/`；這裡可放操作者自己的公開品牌圖案，Docker 建置仍會納入。它不是私密檔案目錄。
 - `src/lib/site-config.ts` 的 DB 設定目前只允許 `default_discord_role_id`，不是現成的全站品牌編輯器。
 - [首次公開 CI](https://github.com/cablate/cabai/actions/runs/37849966337)：container 成功，verify 失敗；瀏覽器失敗案例為不安全登入 callback 與電子報訂閱。W0 已確認兩者是停用服務的環境與啟用服務的測試預期不一致，並非需要恢復維護者的憑證。
-- 基準版 `e2e/subscribe.spec.ts` 固定期待一組供應商 form ID／UID；本地修改已換成合成值。公開 commit 尚未更新。
+- 基準版 `e2e/subscribe.spec.ts` 固定期待一組供應商 form ID／UID；本批已換成合成值並推送。
 
 **這次要做：** 修正驗收阻礙、釐清設定歸屬、補足第一輪操作引導、驗收第二種品牌、整理可發布候選。
 
@@ -39,17 +39,17 @@
 
 ## 執行順序與交付帳本
 
-本計畫採 Standard 範圍。**計畫 verdict：Ready；不是 Release Ready。** W0 的根因與修改 owner 已關閉：產品登入／訂閱頁面的停用行為保留，修正由 Playwright 設定及兩份 E2E 測試負責；沒有新權限模型、schema 或正式遷移需求。後續依本文件執行，不另建第二份主計畫。
+本計畫採 Standard 範圍。**本批狀態：實作、本地驗收、公開推送與候選 CI 完成；尚未建立 release 或切換正式站。** W0 的根因與修改 owner 已關閉：產品登入／訂閱頁面的停用行為保留，修正由 Playwright 設定及兩份 E2E 測試負責；沒有新權限模型、schema 或正式遷移需求。後續依本文件執行，不另建第二份主計畫。
 
-目前階段 S5／S6 的本地驗證已完成，W4 進入公開推送與同版本 hosted CI；2026-10-09 已取得本批提交、推送 main 與追蹤 CI 的授權，不包含 release 或正式切換。每批執行者負責程式、文件及證據，維護者負責發布與正式環境授權。
+目前進入 S9 文件收尾：產品候選 `3d2078a` 已推送且同版本 hosted CI 通過；2026-10-09 已取得本批提交、推送 main 與追蹤 CI 的授權，不包含 release 或正式切換。每批執行者負責程式、文件及證據，維護者負責發布與正式環境授權。
 
 | 單位 | 狀態／依賴 | 下一個動作 | 回復點 |
 |---|---|---|---|
-| W0 驗收失敗歸因 | 完成；根因與本地雙情境回歸已確認 | 最終候選仍須重跑 hosted CI | 基準 commit；不碰正式資料 |
+| W0 驗收失敗歸因 | 完成；根因與本地雙情境回歸已確認 | 同版本 hosted CI 已通過 | 基準 commit；不碰正式資料 |
 | W1 設定與中性範例 | 本地完成；獨立分類審查、品牌與分享圖漏接已修 | 保持最終候選的回歸檢查 | 本批候選提交；基準 commit 保留 |
 | W2 首次安裝引導 | 文件修正、Doctor 與隔離 Docker 安裝路徑已驗證 | 真實外部服務由操作者另驗 | 原有安裝入口仍可用 |
 | W3 第二品牌驗收 | 兩種品牌本地容器驗收完成 | 未涵蓋真正 Linux 公網主機及 OAuth | 兩套環境已停止，資料保留 |
-| W4 版本候選交付 | 本地 verify:full 通過；已授權推送 | 推送後手動觸發同 commit 的 hosted CI | CI 不通過就不標 release ready |
+| W4 版本候選交付 | 完成；候選已推送，verify／container 均通過 | 文件收尾；release 與正式切換另行授權 | 基準 commit 與 CI 證據保留 |
 
 各單位完成後，在這張表填上結果與證據連結。狀態依序為實作、程式驗證、部署候選驗證、發布候選；不把本機容器驗證寫成正式站驗證。後續的正式 dogfood 切換另列於本文末段，不隱藏在 W4 裡。
 
@@ -67,7 +67,7 @@
 
 ### 第二批本地驗收（2026-10-09）
 
-以下取代上一批尚未驗證的本地項目；公開 repo 仍未推送本批修改。
+以下取代上一批尚未驗證的本地項目；產品候選已推送，hosted 結果見下一節。
 
 - **同程式、不同站點：** 在獨立乾淨 clone 納入候選修改，建立本機驗收 snapshot `5f222f673dd03e97f89d6a5bab610ca3fe23d43d`（不是已發布 commit）。CabAI 與山間攝影教室各自從同一 snapshot、自己的 env／公開資產 build；兩個 image 的 revision label 相同，clone 的 tracked 檔案沒有因換品牌而改動。
 - **真實容器：** Docker Desktop 上的 Linux containers 各自執行空 DB migration、readiness、公開頁面、首次 admin bootstrap、草稿建立與 reload；移除 bootstrap token 後重新建立 app，provider 消失、setup 停用，原草稿及已建立的 admin session 仍可讀。app 為 non-root、read-only root filesystem、loopback port。這不是 Linux 公網主機或真正 Google OAuth 驗收。
@@ -78,7 +78,13 @@
 - **設定與公開邊界：** Doctor 回報 `ok: true`；最終 runtime patch 的 `verify:static` 通過，保留既有 1 個 lint warning。候選新增的 3 個本機 commits 經 redacted Gitleaks 掃描無 findings；這不是完整安全性保證。plugin 套件與 Worker 40/40 測試通過。
 - **完整本地檢查：** `npm run verify:full` exit 0，包含 static、unit 686、component 118、reliability 37、Worker 40、contract 207、integration 292 tests，以及 production build／standalone sanitization。使用專用 PostgreSQL，`VITEST_MAX_WORKERS=1` 限制並行數，沒有修改 timeout 或 assertion。此命令不取代上述獨立瀏覽器驗收。
 - **提交前審查：** 獨立 source review 未發現本批公開內容、品牌接線或雙 Playwright profile 的阻擋問題；完整 staged diff 經 redacted Gitleaks 掃描無 findings。CI 目前只由 pull request 或手動觸發，推送 main 後須明確執行 `ci.yml`，不能把 push 成功當成 CI 成功。
-- **仍待完成：** 驗證推送後同 commit 的 hosted CI。真正 Google／付款／寄信／Discord、正式 dogfood 切換保持 UNVERIFIED 或另案，不把本地 bootstrap、mock 或 Docker Desktop 當成那些證據。本地測試容器已停止，資料保留；沒有變更正式站。
+- **另案驗證：**真正 Google／付款／寄信／Discord、正式 dogfood 切換保持 UNVERIFIED 或另案，不把本地 bootstrap、mock 或 Docker Desktop 當成那些證據。本地測試容器已停止，資料保留；沒有變更正式站。
+
+### 公開候選 CI（2026-10-09）
+
+產品候選 `3d2078aff15fa66967178944efc1e186150f24ad` 的 [GitHub CI](https://github.com/cablate/cabai/actions/runs/37858915352) 已完成，scope、verify、container 全部成功。Linux runner 的 default 瀏覽器情境 6/6、synthetic enabled-services 2/2 在同次命令通過；容器建置、image boundary、新資料庫 migration、容器 smoke 與 auto-migration entrypoint 檢查也成功。這補上本地跨次 E2E 以外的乾淨 hosted 證據，不代表真實供應商帳號或正式會員資料已驗證。
+
+後續只有結果文件更新；完整 CI 仍會針對文件收尾 commit 再跑一次。未建立 tag／release，未執行正式站切換。本批 W0–W4 的產品修改已結束；下一批回到 ROADMAP 選擇明確的小成果，不延伸本計畫成為新的永久工作清單。
 
 ### W0：先釐清兩個失敗，不調低標準
 

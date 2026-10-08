@@ -42,7 +42,7 @@ CabAI 是一套可以自己架設的課程與會員網站，適合想把教材�
 
 程式使用 Next.js、TypeScript 和 PostgreSQL。想調整外觀、擴充功能或串接自己的工具，可以從[模組地圖](docs/architecture/MODULE-MAP.md)和[貢獻指南](CONTRIBUTING.md)開始；執行測試請看[開發與測試](docs/development/DEVELOPMENT-AND-TESTING.md)。
 
-目前正在準備第一個公開版本，主要流程是課程發布與會員閱讀，已完成本機建置、瀏覽器流程及備份還原測試。正式使用前，請在自己的環境走一遍登入與課程流程，並測試要啟用的外部服務。接下來會先改善安裝和日常使用遇到的問題，規劃見 [ROADMAP](docs/planning/ROADMAP.md)。
+目前正在準備第一個公開版本，主要流程是課程發布與會員閱讀。這批自架改善已通過 [GitHub CI](https://github.com/cablate/cabai/actions/runs/37858915352)，包含瀏覽器流程與 Linux 容器檢查；本機也驗證了兩個不同品牌的獨立安裝，以及備份還原。正式使用前，請在自己的環境走一遍登入與課程流程，並測試要啟用的外部服務。接下來會先改善安裝和日常使用遇到的問題，規劃見 [ROADMAP](docs/planning/ROADMAP.md)。
 
 ## 需要時再往下看
 

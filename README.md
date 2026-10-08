@@ -42,7 +42,7 @@ The project follows a **dogfooding** approach: the maintainer's own installation
 
 The app uses Next.js, TypeScript and PostgreSQL. To change the interface, extend a feature or connect your own tools, start with the [module map](docs/architecture/MODULE-MAP.md) and [contribution guide](CONTRIBUTING.md). For running tests, see [Development and Testing](docs/development/DEVELOPMENT-AND-TESTING.md).
 
-The first public release is in preparation. Course publishing and member reading are the main workflows; local build, browser and backup/restore tests have passed. Before using it with real members, walk through login and course access on your own installation and test the external services you enable. Next improvements will focus on setup and everyday usability; see the [ROADMAP](docs/planning/ROADMAP.md).
+The first public release is in preparation. Course publishing and member reading are the main workflows. The self-hosting update has passed [GitHub CI](https://github.com/cablate/cabai/actions/runs/37858915352), including browser journeys and Linux container checks; local tests also cover two independently branded installations and backup/restore. Before using it with real members, walk through login and course access on your own installation and test the external services you enable. Next improvements will focus on setup and everyday usability; see the [ROADMAP](docs/planning/ROADMAP.md).
 
 ## When you need more detail
 

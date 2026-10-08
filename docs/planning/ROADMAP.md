@@ -9,7 +9,7 @@
 - 安裝、備份、還原與升級能照文件執行，遇到問題也找得到排查方式。
 - 人與 AI 都能找到程式位置、功能規則、必要設定與測試，不依賴維護者的私人環境。
 
-程式已在 [cablate/cabai](https://github.com/cablate/cabai) 公開，私人漏洞回報入口也已啟用；第一個版本發布仍在準備中。下一批先修正首次公開 CI 的瀏覽器失敗，再用完全不同的品牌走一次乾淨安裝。執行順序、目前狀態與完成條件統一放在[自架首次成功計畫](SELF-HOSTING-FIRST-SUCCESS.md)。既有驗證範圍與尚未涵蓋的情境見[開發與測試](../development/DEVELOPMENT-AND-TESTING.md#first-release-verification-scope-2026-10-08)。
+程式已在 [cablate/cabai](https://github.com/cablate/cabai) 公開，私人漏洞回報入口也已啟用；第一個版本發布仍在準備中。首次公開 CI 的瀏覽器失敗已修正，兩種品牌的隔離安裝與[更新版 GitHub CI](https://github.com/cablate/cabai/actions/runs/37858915352) 均已通過；本批結果見[自架首次成功計畫](SELF-HOSTING-FIRST-SUCCESS.md)。接下來依下列優先序改善，不把正式站切換混入公開程式更新。既有驗證範圍與尚未涵蓋的情境見[開發與測試](../development/DEVELOPMENT-AND-TESTING.md#first-release-verification-scope-2026-10-08)。
 
 ## 接著優先改善什麼？
 
