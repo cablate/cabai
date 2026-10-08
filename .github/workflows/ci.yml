@@ -1,0 +1,542 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    outputs:
+      full: ${{ steps.classify.outputs.full }}
+      container: ${{ steps.classify.outputs.container }}
+
+    steps:
+      - name: Checkout CI scope classifier
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/classify-ci-scope.mjs
+
+      - name: Collect changed paths
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          changed_file_list="$RUNNER_TEMP/changed-files.txt"
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ] && [ -n "${PR_NUMBER:-}" ]; then
+            if ! gh api --paginate "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files?per_page=100" --jq '.[].filename' > "$changed_file_list"; then
+              printf '__FORCE_FULL__\n' > "$changed_file_list"
+            fi
+          else
+            printf '__FORCE_FULL__\n' > "$changed_file_list"
+          fi
+
+          if [ ! -s "$changed_file_list" ]; then
+            printf '__FORCE_FULL__\n' > "$changed_file_list"
+          fi
+
+          echo "file=$changed_file_list" >> "$GITHUB_OUTPUT"
+
+      - name: Classify CI scope
+        id: classify
+        env:
+          CHANGED_FILE_LIST: ${{ steps.changed.outputs.file }}
+        run: node scripts/classify-ci-scope.mjs --from-file "$CHANGED_FILE_LIST"
+
+  verify:
+    needs: scope
+    if: ${{ always() && needs.scope.result != 'cancelled' && needs.scope.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      AUTH_SECRET: ci-auth-secret-change-me-32-characters
+      AUTH_URL: http://localhost:3000
+      CRON_SECRET: ci-cron-secret
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/paid_service_site_ci
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      POSTGRES_DB: paid_service_site_ci
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      STORAGE_PROVIDER: local
+      BACKUP_PROVIDER: disabled
+      SCHEDULED_TASKS_ENABLED: "false"
+      SCHEDULER_MODE: disabled
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan Git history for secrets
+        run: >-
+          docker run --rm
+          -v "$PWD:/repo"
+          zricethezav/gitleaks:v8.30.1
+          git /repo --config=/repo/.gitleaks.toml --no-banner --redact --exit-code=1
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Check bilingual public documents
+        run: node tools/docs.mjs check
+
+      - name: Validate local Compose profile
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        run: docker compose config
+
+      - name: Start local PostgreSQL
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        run: docker compose up -d --wait postgres
+
+      - name: Restore Next.js cache
+        id: next-cache-restore
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            .next/cache
+            tsconfig.tsbuildinfo
+            ~/.cache/next-swc
+          key: ${{ runner.os }}-next-v2-${{ hashFiles('package-lock.json') }}-${{ hashFiles('package.json') }}-${{ hashFiles('.node-version') }}-${{ hashFiles('next.config.ts') }}-${{ hashFiles('tsconfig.json') }}-${{ hashFiles('postcss.config.mjs') }}
+          restore-keys: |
+            ${{ runner.os }}-next-v2-${{ hashFiles('package-lock.json') }}-${{ hashFiles('package.json') }}-${{ hashFiles('.node-version') }}-
+            ${{ runner.os }}-next-v2-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Static foundation gates
+        run: npm run verify:static
+
+      - name: Create test database
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        env:
+          PGPASSWORD: postgres
+        run: createdb -h localhost -U postgres paid_service_site_ci_test
+
+      - name: Test
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/paid_service_site_ci_test
+          TEST_DATABASE_RESET_CONFIRM: paid_service_site_ci_test
+        run: npm run test
+
+      - name: Admin query, payload, and Agent parity budgets
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/paid_service_site_ci_test
+          TEST_DATABASE_RESET_CONFIRM: paid_service_site_ci_test
+        run: npm run admin:cost:check
+
+      - name: Install Chromium for browser mainline
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser mainline
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/paid_service_site_ci_test
+          TEST_DATABASE_RESET_CONFIRM: paid_service_site_ci_test
+          E2E_PORT: 3101
+          AUTH_URL: http://127.0.0.1:3101
+          NEXTAUTH_URL: http://127.0.0.1:3101
+          NEXT_PUBLIC_APP_URL: http://127.0.0.1:3101
+        run: npm run test:e2e
+
+      - name: Upload browser failure evidence
+        if: ${{ failure() && (needs.scope.result != 'success' || needs.scope.outputs.full == 'true') }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-evidence
+          path: |
+            playwright-report/
+            test-results/playwright/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Apply migrations
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        run: npm run db:migrate:runtime
+
+      - name: Verify production migration and canonical entrypoint matrix
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        env:
+          MIGRATION_TEST_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          MIGRATION_TEST_ALLOW_CREATE_DATABASES: "true"
+          PGPASSWORD: postgres
+          ENTRYPOINT_DATABASE: paid_service_site_ci_entrypoint
+          ENTRYPOINT_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/paid_service_site_ci_entrypoint
+        run: |
+          set -euo pipefail
+          npm run test:production-migrations
+
+          cleanup_entrypoint_database() {
+            dropdb --if-exists --force -h 127.0.0.1 -U postgres "$ENTRYPOINT_DATABASE" >/dev/null 2>&1 || true
+          }
+          trap cleanup_entrypoint_database EXIT
+          cleanup_entrypoint_database
+          createdb -h 127.0.0.1 -U postgres "$ENTRYPOINT_DATABASE"
+
+          if DATABASE_URL="$ENTRYPOINT_DATABASE_URL" MIGRATION_MODE=external node scripts/start-production.mjs --check-only; then
+            echo "Canonical external entrypoint unexpectedly accepted an empty schema."
+            exit 1
+          fi
+
+          DATABASE_URL="$ENTRYPOINT_DATABASE_URL" MIGRATION_MODE=auto node scripts/start-production.mjs --check-only &
+          FIRST_ENTRYPOINT_PID=$!
+          DATABASE_URL="$ENTRYPOINT_DATABASE_URL" MIGRATION_MODE=auto node scripts/start-production.mjs --check-only &
+          SECOND_ENTRYPOINT_PID=$!
+          wait "$FIRST_ENTRYPOINT_PID"
+          wait "$SECOND_ENTRYPOINT_PID"
+
+          DATABASE_URL="$ENTRYPOINT_DATABASE_URL" MIGRATION_MODE=auto node scripts/start-production.mjs --check-only
+          DATABASE_URL="$ENTRYPOINT_DATABASE_URL" MIGRATION_MODE=external node scripts/start-production.mjs --check-only
+
+      - name: Run platform Doctor
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        run: npm run doctor -- --json
+
+      - name: Seed neutral demo course
+        if: ${{ needs.scope.result != 'success' || needs.scope.outputs.full == 'true' }}
+        run: npm run script:seed-demo
+
+      - name: Build
+        if: ${{ needs.scope.result == 'success' && needs.scope.outputs.full == 'true' && needs.scope.outputs.container != 'true' }}
+        run: npm run build
+
+      - name: Save Next.js cache
+        if: ${{ success() && needs.scope.result == 'success' && needs.scope.outputs.full == 'true' && needs.scope.outputs.container != 'true' && steps.next-cache-restore.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            .next/cache
+            tsconfig.tsbuildinfo
+            ~/.cache/next-swc
+          key: ${{ steps.next-cache-restore.outputs.cache-primary-key }}
+
+      - name: Smoke test production server
+        if: ${{ needs.scope.result == 'success' && needs.scope.outputs.full == 'true' && needs.scope.outputs.container != 'true' }}
+        env:
+          BASE_URL: http://127.0.0.1:3100
+          SMOKE_PRODUCT_ID: 00000000-0000-4000-8000-000000000001
+        run: |
+          set -euo pipefail
+          PORT=3100 npm run start > /tmp/next-smoke.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "${SERVER_PID}" 2>/dev/null || true' EXIT
+
+          if ! npm run smoke; then
+            echo "::group::next start log"
+            cat /tmp/next-smoke.log
+            echo "::endgroup::"
+            exit 1
+          fi
+
+      - name: Report verify cache metrics
+        if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full == 'true') }}
+        env:
+          NEXT_CACHE_HIT: ${{ steps.next-cache-restore.outputs.cache-hit }}
+          CONTAINER_REQUIRED: ${{ needs.scope.result != 'success' || needs.scope.outputs.container == 'true' }}
+        run: |
+          cache_state="${NEXT_CACHE_HIT:-miss}"
+          production_build_owner=verify
+          if [ "${CONTAINER_REQUIRED:-false}" = "true" ]; then
+            production_build_owner=container
+          fi
+          cache_size_mb=0
+          if [ -d .next/cache ]; then
+            cache_size_mb="$(du -sm .next/cache | awk '{print $1}')"
+          fi
+
+          {
+            echo "### Verify cache metrics"
+            echo ""
+            echo "| Metric | Value |"
+            echo "| --- | --- |"
+            printf '| Next.js exact cache hit | %s |\n' "$cache_state"
+            printf '| Next.js cache size | %s MB |\n' "$cache_size_mb"
+            printf '| Production build owner | %s |\n' "$production_build_owner"
+            echo ""
+            echo "Restore and save durations remain visible in the individual workflow steps."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop local PostgreSQL
+        if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.full == 'true') }}
+        run: docker compose down -v
+
+  container:
+    needs: scope
+    if: ${{ always() && (needs.scope.result != 'success' || needs.scope.outputs.container == 'true') }}
+    runs-on: ubuntu-latest
+    # A cold Docker layer cache can take ~20 minutes before the cache and
+    # production smoke steps run. Keep the complete gate intact while giving
+    # the first build enough time to finish and populate the cache.
+    timeout-minutes: 30
+    env:
+      CABAI_IMAGE: cabai:ci
+      CABAI_PORT: 3200
+      POSTGRES_PASSWORD: ci-container-postgres-password
+      DATABASE_URL: postgresql://cabai:ci-container-postgres-password@postgres:5432/cabai
+      AUTH_SECRET: ci-container-auth-secret-at-least-32-characters
+      CRON_SECRET: ci-container-cron-secret-at-least-32-characters
+      AUTH_URL: http://127.0.0.1:3200
+      NEXTAUTH_URL: http://127.0.0.1:3200
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3200
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+        with:
+          persist-credentials: false
+
+      - name: Validate production Compose profile
+        run: docker compose -f compose.production.example.yml config --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Restore Docker layer cache
+        id: docker-cache-restore
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-cabai-v1-${{ hashFiles('Dockerfile') }}-${{ hashFiles('.dockerignore') }}-${{ hashFiles('package.json') }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-cabai-v1-
+
+      - name: Build production image
+        id: docker-build
+        env:
+          CACHE_EXACT_HIT: ${{ steps.docker-cache-restore.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/.buildx-cache
+          rm -rf /tmp/.buildx-cache-new
+
+          restored_cache_mb="$(du -sm /tmp/.buildx-cache | awk '{print $1}')"
+          cache_from=()
+          if [ -f /tmp/.buildx-cache/index.json ]; then
+            cache_from=(--cache-from type=local,src=/tmp/.buildx-cache)
+          fi
+
+          cache_to=()
+          cache_exported=false
+          if [ "${CACHE_EXACT_HIT:-}" != "true" ] || [ ! -f /tmp/.buildx-cache/index.json ]; then
+            cache_to=(--cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max)
+            cache_exported=true
+          fi
+
+          build_started_at="$(date +%s)"
+          build_status=0
+          docker buildx build \
+            --tag "$CABAI_IMAGE" \
+            --load \
+            "${cache_from[@]}" \
+            "${cache_to[@]}" \
+            . || build_status=$?
+          build_duration_seconds="$(( $(date +%s) - build_started_at ))"
+
+          exported_cache_mb=0
+          if [ -d /tmp/.buildx-cache-new ]; then
+            exported_cache_mb="$(du -sm /tmp/.buildx-cache-new | awk '{print $1}')"
+          fi
+
+          echo "duration_seconds=$build_duration_seconds" >> "$GITHUB_OUTPUT"
+          echo "restored_cache_mb=$restored_cache_mb" >> "$GITHUB_OUTPUT"
+          echo "exported_cache_mb=$exported_cache_mb" >> "$GITHUB_OUTPUT"
+          echo "cache_exported=$cache_exported" >> "$GITHUB_OUTPUT"
+          exit "$build_status"
+
+      - name: Promote Docker layer cache
+        if: ${{ success() && steps.docker-build.outputs.cache_exported == 'true' }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Save Docker layer cache
+        if: ${{ success() && steps.docker-build.outputs.cache_exported == 'true' }}
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ steps.docker-cache-restore.outputs.cache-primary-key }}
+
+      - name: Report Docker cache metrics
+        if: always()
+        env:
+          CACHE_EXACT_HIT: ${{ steps.docker-cache-restore.outputs.cache-hit }}
+          BUILD_DURATION_SECONDS: ${{ steps.docker-build.outputs.duration_seconds }}
+          RESTORED_CACHE_MB: ${{ steps.docker-build.outputs.restored_cache_mb }}
+          EXPORTED_CACHE_MB: ${{ steps.docker-build.outputs.exported_cache_mb }}
+          CACHE_EXPORTED: ${{ steps.docker-build.outputs.cache_exported }}
+        run: |
+          cache_state="${CACHE_EXACT_HIT:-miss}"
+          build_seconds="${BUILD_DURATION_SECONDS:-not-available}"
+          restored_mb="${RESTORED_CACHE_MB:-0}"
+          exported_mb="${EXPORTED_CACHE_MB:-0}"
+          cache_exported="${CACHE_EXPORTED:-false}"
+
+          {
+            echo "### Docker cache metrics"
+            echo ""
+            echo "| Metric | Value |"
+            echo "| --- | --- |"
+            printf '| Exact cache hit | %s |\n' "$cache_state"
+            printf '| Image build duration | %s seconds |\n' "$build_seconds"
+            printf '| Restored cache size | %s MB |\n' "$restored_mb"
+            printf '| Exported cache size | %s MB |\n' "$exported_mb"
+            printf '| New cache exported | %s |\n' "$cache_exported"
+            echo ""
+            echo "Restore and save durations remain visible in the individual workflow steps."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify image boundary
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect "$CABAI_IMAGE" --format '{{.Config.User}}')" = "node"
+          docker image inspect "$CABAI_IMAGE" \
+            | jq -e '.[0].Config.Env | all(.[]; (startswith("DATABASE_URL=") or startswith("AUTH_SECRET=") or startswith("CRON_SECRET=")) | not)'
+          docker volume create cabai-ci-boundary >/dev/null
+          docker run --rm --read-only \
+            --tmpfs /tmp --tmpfs /app/logs:rw,noexec,nosuid,size=32m,uid=1000,gid=1000,mode=0700 --tmpfs /app/.next/cache:rw,noexec,nosuid,size=64m,uid=1000,gid=1000,mode=0700 \
+            -v cabai-ci-boundary:/app/data --entrypoint sh "$CABAI_IMAGE" -c \
+            'test "$(id -u)" != 0 && test -w /app/data && test -w /app/logs && test -w /app/.next/cache && test ! -w /app/server.js && pg_dump --version | grep " 18\."'
+          docker volume rm cabai-ci-boundary >/dev/null
+
+      - name: Run fresh migration and container smoke
+        run: |
+          set -euo pipefail
+          docker compose -p cabai-ci -f compose.production.example.yml up -d --wait
+
+          docker run --rm \
+            --network cabai-ci_default \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            -v "$PWD/scripts/seed-demo.ts:/app/scripts/seed-demo.ts:ro" \
+            -v "$PWD/fixtures/demo-course:/app/fixtures/demo-course:ro" \
+            -e NODE_ENV=test \
+            -e SEED_DEMO_ALLOW_REMOTE=1 \
+            -e DATABASE_URL="$DATABASE_URL" \
+            --entrypoint npm \
+            "$CABAI_IMAGE" run script:seed-demo
+
+          docker run --rm \
+            --network cabai-ci_default \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            -v "$PWD/scripts/smoke-test.ts:/app/scripts/smoke-test.ts:ro" \
+            -e BASE_URL=http://app:3000 \
+            -e SMOKE_PRODUCT_ID=00000000-0000-4000-8000-000000000001 \
+            -e SMOKE_PRODUCT_SLUG=demo-course \
+            --entrypoint npm \
+            "$CABAI_IMAGE" run smoke
+
+          docker compose -p cabai-ci -f compose.production.example.yml exec -T app node scripts/container-health.mjs --readiness
+          docker compose -p cabai-ci -f compose.production.example.yml exec -T app sh -c 'printf persisted > /app/data/storage/ci-probe'
+          docker compose -p cabai-ci -f compose.production.example.yml up -d --force-recreate --no-deps app
+          test "$(docker compose -p cabai-ci -f compose.production.example.yml exec -T app cat /app/data/storage/ci-probe)" = persisted
+          docker compose -p cabai-ci -f compose.production.example.yml run --rm migrate
+          docker compose -p cabai-ci -f compose.production.example.yml up -d --wait app
+          curl --fail --silent --show-error http://127.0.0.1:3200/api/health
+          docker compose -p cabai-ci -f compose.production.example.yml stop -t 10 app
+
+      - name: Run direct Docker auto-migration entrypoint smoke
+        env:
+          AUTO_CONTAINER: cabai-ci-auto
+          AUTO_DATABASE: cabai_auto
+          AUTO_VOLUME: cabai-ci-auto-data
+        run: |
+          set -euo pipefail
+
+          cleanup_auto_container() {
+            docker rm -f "$AUTO_CONTAINER" >/dev/null 2>&1 || true
+            docker volume rm "$AUTO_VOLUME" >/dev/null 2>&1 || true
+          }
+          trap cleanup_auto_container EXIT
+          cleanup_auto_container
+
+          docker compose -p cabai-ci -f compose.production.example.yml exec -T postgres \
+            dropdb --if-exists --force -U cabai "$AUTO_DATABASE"
+          docker compose -p cabai-ci -f compose.production.example.yml exec -T postgres \
+            createdb -U cabai "$AUTO_DATABASE"
+          docker volume create "$AUTO_VOLUME" >/dev/null
+
+          docker run -d \
+            --name "$AUTO_CONTAINER" \
+            --init \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=64m \
+            --tmpfs /app/logs:rw,noexec,nosuid,size=32m,uid=1000,gid=1000,mode=0700 \
+            --tmpfs /app/.next/cache:rw,noexec,nosuid,size=64m,uid=1000,gid=1000,mode=0700 \
+            --volume "$AUTO_VOLUME:/app/data" \
+            --network cabai-ci_default \
+            --security-opt no-new-privileges:true \
+            --cap-drop ALL \
+            -p "127.0.0.1:${CABAI_PORT}:3000" \
+            -e DATABASE_URL="postgresql://cabai:${POSTGRES_PASSWORD}@postgres:5432/${AUTO_DATABASE}" \
+            -e AUTH_SECRET="$AUTH_SECRET" \
+            -e AUTH_URL="$AUTH_URL" \
+            -e NEXTAUTH_URL="$NEXTAUTH_URL" \
+            -e NEXT_PUBLIC_APP_URL="$NEXT_PUBLIC_APP_URL" \
+            -e CRON_SECRET="$CRON_SECRET" \
+            -e MIGRATION_MODE=auto \
+            -e STORAGE_PROVIDER=local \
+            -e BACKUP_PROVIDER=disabled \
+            -e DB_BACKUP_WRITES_ENABLED=false \
+            -e SCHEDULED_TASKS_ENABLED=false \
+            -e SCHEDULER_MODE=disabled \
+            -e PORT=3000 \
+            -e HOSTNAME=0.0.0.0 \
+            "$CABAI_IMAGE" >/dev/null
+
+          health_status=starting
+          for _ in $(seq 1 30); do
+            container_status="$(docker inspect "$AUTO_CONTAINER" --format '{{.State.Status}}')"
+            health_status="$(docker inspect "$AUTO_CONTAINER" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}')"
+            if [ "$health_status" = "healthy" ]; then
+              break
+            fi
+            if [ "$container_status" != "running" ]; then
+              docker logs "$AUTO_CONTAINER"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          if [ "$health_status" != "healthy" ]; then
+            docker logs "$AUTO_CONTAINER"
+            exit 1
+          fi
+
+          docker logs "$AUTO_CONTAINER" 2>&1 | grep -F "[startup] migration mode=auto"
+          docker logs "$AUTO_CONTAINER" 2>&1 | grep -F "[startup] schema current tag="
+          curl --fail --silent --show-error "http://127.0.0.1:${CABAI_PORT}/api/health"
+          docker exec "$AUTO_CONTAINER" node scripts/container-health.mjs --readiness
+
+      - name: Stop production reference profile
+        if: always()
+        run: docker compose -p cabai-ci -f compose.production.example.yml down -v

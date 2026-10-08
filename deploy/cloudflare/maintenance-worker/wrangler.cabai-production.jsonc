@@ -1,0 +1,38 @@
+{
+  "name": "selfhost-maintenance-example",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-07-13",
+  "workers_dev": true,
+  "preview_urls": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "MONITOR_STATE",
+        "class_name": "CabaiMonitorState"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "CabaiMonitorState"
+      ]
+    }
+  ],
+  "triggers": {
+    "crons": [
+      "* * * * *"
+    ]
+  },
+  "vars": {
+    "ORIGIN_TIMEOUT_MS": "8000",
+    "RETRY_AFTER_SECONDS": "60",
+    "CONTACT_URL": "mailto:support@example.com",
+    "MONITORING_ENABLED": "false",
+    "MONITOR_LABEL": "Self-host monitoring"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

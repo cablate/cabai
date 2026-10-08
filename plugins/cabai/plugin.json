@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "cabai",
+  "version": "0.1.0",
+  "description": "Connect Codex to CabAI public discovery and the signed-in user's learning content.",
+  "author": {
+    "name": "CabAI contributors",
+    "url": "https://example.com"
+  },
+  "homepage": "https://example.com",
+  "keywords": [
+    "cabai",
+    "learning",
+    "skills",
+    "courses"
+  ]
+}

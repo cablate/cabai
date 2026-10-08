@@ -1,0 +1,2 @@
+ALTER TABLE "agent_information_items" DROP CONSTRAINT "chk_agent_information_source_type";--> statement-breakpoint
+ALTER TABLE "agent_information_items" ADD CONSTRAINT "chk_agent_information_source_type" CHECK ("agent_information_items"."source_type" IN ('manual_announcement', 'library_entry', 'skill_release', 'course', 'api_operation'));

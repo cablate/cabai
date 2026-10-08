@@ -1,0 +1,190 @@
+{
+  "schema_version": "api-route-boundaries/v1",
+  "status": "active",
+  "baseline": {
+    "branch": "master",
+    "commit": "cec610d",
+    "route_root": "src/app/api"
+  },
+  "routes": [
+    {
+      "route": "/api/agent/openapi.yaml",
+      "source": "src/app/api/agent/openapi.yaml/route.ts",
+      "category": "static/generated",
+      "owner": "agent OpenAPI generator",
+      "reason": "Serves generated YAML with static caching and a non-JSON content type; it is a discovery document rather than an application JSON operation.",
+      "status": "documented-exception",
+      "test": {
+        "status": "covered",
+        "references": ["src/app/api/agent/openapi.yaml/openapi-yaml.contract.test.ts", "src/lib/agent/openapi.contract.test.ts"]
+      }
+    },
+    {
+      "route": "/api/agent/user/v1/openapi.yaml",
+      "source": "src/app/api/agent/user/v1/openapi.yaml/route.ts",
+      "category": "static/generated",
+      "owner": "User Agent OpenAPI generator",
+      "reason": "Serves the generated User-safe YAML contract with static caching; it is a discovery document rather than an application JSON operation.",
+      "status": "documented-exception",
+      "test": {
+        "status": "covered",
+        "references": ["src/app/api/agent/user/v1/openapi.yaml/openapi-yaml.contract.test.ts", "src/lib/agent/openapi.contract.test.ts"]
+      }
+    },
+    {
+      "route": "/api/auth/{...nextauth}",
+      "source": "src/app/api/auth/[...nextauth]/route.ts",
+      "category": "framework-auth",
+      "owner": "Auth.js handlers and auth rate-limit wrapper",
+      "reason": "NextAuth owns the protocol response, cookies, and session semantics; the route only wraps POST with login rate limiting.",
+      "status": "documented-exception",
+      "test": {
+        "status": "gap",
+        "references": [],
+        "note": "No route-level contract test was found for the NextAuth handler or its POST rate-limit wrapper."
+      }
+    },
+    {
+      "route": "/api/callback",
+      "source": "src/app/api/callback/route.ts",
+      "category": "provider-callback/raw-signature",
+      "owner": "Portaly payment callback and order-lifecycle owner",
+      "reason": "Must read provider headers/body, verify the signature, always return provider-safe 200 responses, and run idempotent order/purchase/outbox side effects.",
+      "status": "documented-exception",
+      "test": {
+        "status": "partial",
+        "references": ["src/lib/__tests__/callback-validation.integration.test.ts", "src/lib/__tests__/portaly-signature.test.ts"],
+        "note": "Validation and signature behavior are covered, but the complete route response/idempotency matrix is not a dedicated route contract."
+      }
+    },
+    {
+      "route": "/api/checkout",
+      "source": "src/app/api/checkout/route.ts",
+      "category": "high-risk-domain-candidate",
+      "owner": "Checkout transaction and Portaly session owner",
+      "reason": "Creates or reuses pending orders inside a transaction, calls the payment provider, and returns a redirect; migration waits for payment/order owner contracts.",
+      "status": "deferred",
+      "test": {
+        "status": "gap",
+        "references": [],
+        "note": "No dedicated route contract test for checkout form parsing, transaction deduplication, provider failure, and redirect parity was found."
+      }
+    },
+    {
+      "route": "/api/checkout/free-claim",
+      "source": "src/app/api/checkout/free-claim/route.ts",
+      "category": "high-risk-domain-candidate",
+      "owner": "Free-claim entitlement transaction owner",
+      "reason": "Writes user entitlement state, relies on a database uniqueness contract for idempotency, records an event, and redirects to the member hub.",
+      "status": "deferred",
+      "test": {
+        "status": "gap",
+        "references": [],
+        "note": "No dedicated route contract test for authorization, plan mode validation, idempotent grant, and redirect parity was found."
+      }
+    },
+    {
+      "route": "/api/discord/callback",
+      "source": "src/app/api/discord/callback/route.ts",
+      "category": "provider-callback/raw-signature",
+      "owner": "Discord OAuth callback and account-link owner",
+      "reason": "Consumes an OAuth code/state callback, manages cookies and CSRF state, calls Discord, mutates the user link, and redirects for every outcome.",
+      "status": "documented-exception",
+      "test": {
+        "status": "gap",
+        "references": [],
+        "note": "Discord service integration tests exist, but no route-level OAuth callback state/cookie/redirect contract test was found."
+      }
+    },
+    {
+      "route": "/api/discord/link",
+      "source": "src/app/api/discord/link/route.ts",
+      "category": "ordinary-candidate",
+      "owner": "Discord OAuth initiation flow",
+      "reason": "It has ordinary request semantics but owns authentication, CSRF state cookie creation, provider configuration checks, and an external OAuth redirect; classify before any pilot migration.",
+      "status": "deferred",
+      "test": {
+        "status": "gap",
+        "references": [],
+        "note": "No route-level contract test for auth redirect, state cookie attributes, missing configuration, and provider URL construction was found."
+      }
+    },
+    {
+      "route": "/api/discord/unlink",
+      "source": "src/app/api/discord/unlink/route.ts",
+      "category": "ordinary-candidate",
+      "owner": "Discord unlink and role-revocation transaction owner",
+      "reason": "Owns same-origin/auth checks, role revocation best effort, event tracking, soft unlink persistence, and a redirect; retain these side effects until a contract proves a shared handler safe.",
+      "status": "deferred",
+      "test": {
+        "status": "gap",
+        "references": [],
+        "note": "Discord service integration tests exist, but no route-level unlink auth/side-effect/redirect contract test was found."
+      }
+    },
+    {
+      "route": "/api/portaly-marketplace",
+      "source": "src/app/api/portaly-marketplace/route.ts",
+      "category": "provider-callback/raw-signature",
+      "owner": "Portaly marketplace webhook and marketplace-processor owner",
+      "reason": "Legacy ingress is quarantined: returns 503 without reading payloads or loading persistence/processing because its data-only signature does not authenticate event/timestamp. Stored records and admin reconciliation remain.",
+      "status": "documented-exception",
+      "test": {
+        "status": "partial",
+        "references": ["src/app/api/portaly-marketplace/route.contract.test.ts", "src/lib/__tests__/marketplace-processor.integration.test.ts"],
+        "note": "Route contract checks fail-closed 503 and no database/processor imports. Provider compatibility is deliberately not claimed; re-enabling requires authenticated-event evidence and adversarial tests."
+      }
+    },
+    {
+      "route": "/api/assets/{id}",
+      "source": "src/app/api/assets/[id]/route.ts",
+      "category": "redirect-stream-storage",
+      "owner": "Media access and storage provider boundary",
+      "reason": "Applies private-asset concealment and entitlement checks, then returns a signed external redirect or public redirect rather than a JSON envelope.",
+      "status": "documented-exception",
+      "test": {
+        "status": "covered",
+        "references": ["src/app/api/assets/[id]/asset-access.contract.test.ts"]
+      }
+    },
+    {
+      "route": "/api/storage/local/public/{key}",
+      "source": "src/app/api/storage/local/public/[key]/route.ts",
+      "category": "redirect-stream-storage",
+      "owner": "Local storage provider",
+      "reason": "Streams public object bytes directly and maps provider failures to a concealment-safe 404; it is not a JSON request/response operation.",
+      "status": "documented-exception",
+      "test": {
+        "status": "partial",
+        "references": ["src/lib/storage/local-storage.test.ts"],
+        "note": "Provider token/path behavior is covered, but no route-level public-stream status/header contract was found."
+      }
+    },
+    {
+      "route": "/api/storage/local/read",
+      "source": "src/app/api/storage/local/read/route.ts",
+      "category": "redirect-stream-storage",
+      "owner": "Local storage provider",
+      "reason": "Streams private object bytes from a signed token and intentionally collapses missing/invalid tokens and provider failures into a safe 404.",
+      "status": "documented-exception",
+      "test": {
+        "status": "partial",
+        "references": ["src/lib/storage/local-storage.test.ts"],
+        "note": "Provider token validation is covered, but no route-level stream status/header contract was found."
+      }
+    },
+    {
+      "route": "/api/storage/local/upload",
+      "source": "src/app/api/storage/local/upload/route.ts",
+      "category": "redirect-stream-storage",
+      "owner": "Local storage upload provider",
+      "reason": "Consumes an upload token and request stream, returns a 204 on success, and preserves provider-specific 401 failure behavior.",
+      "status": "documented-exception",
+      "test": {
+        "status": "partial",
+        "references": ["src/lib/storage/local-storage.test.ts"],
+        "note": "Provider upload validation is covered, but no route-level 204/401 stream contract was found."
+      }
+    }
+  ]
+}

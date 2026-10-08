@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "auto_mark_complete" boolean NOT NULL DEFAULT false;

@@ -1,0 +1,10 @@
+{
+  "orphanSql": [
+    {
+      "file": "0010_premium_blindfold.sql",
+      "sha256": "02eca4bc09fa0c57078f7fb0c4afe694ab7756bb3360b8b8333573bc9eb49965",
+      "reason": "Historical unjournaled site_config migration. The journaled 0011 migration creates the same table with IF NOT EXISTS.",
+      "reviewBlocker": "Inspect local, staging, and production _drizzle_migrations before removing, renaming, or applying this file."
+    }
+  ]
+}

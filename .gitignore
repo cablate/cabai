@@ -1,0 +1,109 @@
+# Dependencies and generated build output (including nested plugin/worker packages)
+node_modules/
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+.next/
+/out/
+/build/
+/dist/
+/coverage/
+/deploy/cloudflare/maintenance-worker/coverage/
+*.tsbuildinfo
+next-env.d.ts
+.eslintcache
+.cache/
+.turbo/
+.npm/
+
+# Environment files: only the two reviewed root templates are publishable.
+.env
+.env.*
+.env*.local
+!/.env.example
+!/.env.test
+
+# Credentials and machine-local service configuration
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+/credentials*.json
+/service-account*.json
+/secrets/
+/credentials/
+.mcp.json
+.aws/
+.ssh/
+.kube/
+.vercel/
+.wrangler/
+.railway/
+.claude/settings.local.json
+
+# Runtime/customer/content data. Do not replace this with *.sql or *.json:
+# SQL migrations, neutral fixtures and public contracts must stay tracked.
+/data/
+/backups/
+/uploads/
+/exports/
+/private/
+/operator/
+/src/contents/
+/docs/private/
+/docs/internal/
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.dump
+
+# Logs, disposable investigations, browser auth state and test reports
+*.log
+*.log.*
+/logs/
+/tmp/
+/tmp*/
+/.tmp*/
+/scratch/
+playwright-report/
+test-results/
+playwright/.auth/
+.playwright-mcp/
+.codex-*.png
+admin-analytics.png
+
+# Local scripts and content-publishing state, not product implementations
+/scripts/local/
+/scripts/*.local.*
+/scripts/.content-sync-cache.json
+.publish-state.json
+.codegraph/
+.omo/
+
+# Operator-owned PUBLIC branding assets, supplied before deployment build.
+# Git-ignore is not access control; these assets are served and may enter images.
+/public/site/
+
+# OS/editor workspace debris
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+*.swp
+*.swo
+*~

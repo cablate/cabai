@@ -1,0 +1,33 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Explicit non-secret test auth placeholder"
+regexTarget = "match"
+stopwords = ["test-secret-with-enough-entropy-32"]
+
+[[allowlists]]
+description = "Historical Discord integration tests use documented fake snowflake-shaped IDs"
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''src/lib/__tests__/discord\.test\.ts''',
+  '''src/lib/__tests__/discord\.integration\.test\.ts''',
+]
+regexes = [
+  '''discordId\s*=\s*"(?:123456789012345678|876543210987654321)"''',
+]
+
+[[allowlists]]
+description = "Webhook documentation uses explicit evt_ example idempotency keys, not credentials"
+condition = "AND"
+regexTarget = "match"
+paths = [
+  '''\.claude/skills/paid-service-api/references/webhook-guide\.md''',
+  '''\.claude/skills/agent-api-paid-service/references/webhook-guide\.md''',
+  '''docs/external-integration-framework\.md''',
+  '''docs/entitlement-architecture\.md''',
+]
+regexes = [
+  '''idempotency_key"\s*:\s*"evt_(?:a1b2c3d4e5f6\.\.\.|abc123def456)"''',
+]

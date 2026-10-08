@@ -1,0 +1,114 @@
+{
+  "schemaVersion": 1,
+  "license": {
+    "spdx": "CC0-1.0",
+    "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "notice": "這份範例課程的文字與中繼資料均為此專案原創的中性測試內容。"
+  },
+  "plan": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "slug": "demo-course",
+    "name": "站台驗收範例課程",
+    "description": "給剛完成架站的管理者，用三堂短課確認商品、課堂與進度主線。",
+    "amount": 0,
+    "currency": "TWD",
+    "billingPeriod": "one-time",
+    "pricingType": "fixed",
+    "status": "active",
+    "gateway": "manual",
+    "purchaseButtonMode": "free_claim",
+    "hasPlatformContent": true,
+    "hasExternalService": false
+  },
+  "presentation": {
+    "id": "00000000-0000-4000-8000-000000000010",
+    "offeringType": "course",
+    "title": "站台驗收範例課程",
+    "subtitle": "給架站者的三堂快速檢查",
+    "description": "剛把平台架好嗎？這門免費範例課會帶你走過商品頁、免費領取、課程大綱、課堂和學習進度。正式上線前，先用它確認學員主線都能正常使用。",
+    "ctaLabel": "免費加入課程",
+    "metadataJson": {
+      "offeringType": "course",
+      "metadata": {
+        "chapterCount": 2,
+        "lessonCount": 3,
+        "estimatedHours": 0.5,
+        "freeLessonCount": 1,
+        "language": "zh-TW",
+        "learningObjectives": [
+          "確認已發佈課程能出現在商品頁",
+          "確認學員能切換課堂並閱讀 Markdown 內容",
+          "確認免費領取與學習進度可以正常保存"
+        ],
+        "includedItems": [
+          "兩個精簡章節",
+          "三堂包含清單、表格與提示的 Markdown 課程",
+          "不需要外部素材或正式環境憑證"
+        ]
+      }
+    },
+    "trustNotesJson": [
+      {
+        "type": "custom",
+        "title": "這是驗收用的中性範例",
+        "content": "它只用來確認新站台的公開商品、免費領取和上課流程。驗收完成後，再建立自己的正式課程。"
+      }
+    ],
+    "publishedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "course": {
+    "id": "00000000-0000-4000-8000-000000000100",
+    "title": "站台驗收範例課程",
+    "description": "兩個短章節，帶架站者走一次從公開商品到完成課堂的流程。",
+    "status": "published",
+    "sortOrder": 0
+  },
+  "chapters": [
+    {
+      "id": "00000000-0000-4000-8000-000000000201",
+      "title": "從這裡開始",
+      "sortOrder": 0,
+      "defaultExpanded": true,
+      "lessons": [
+        {
+          "id": "00000000-0000-4000-8000-000000000301",
+          "title": "先確認課堂內容",
+          "contentPath": "lessons/01-welcome.md",
+          "type": "text",
+          "sortOrder": 0,
+          "isPreview": true,
+          "status": "published",
+          "duration": 180
+        },
+        {
+          "id": "00000000-0000-4000-8000-000000000302",
+          "title": "檢查課程導覽",
+          "contentPath": "lessons/02-course-map.md",
+          "type": "text",
+          "sortOrder": 1,
+          "isPreview": false,
+          "status": "published",
+          "duration": 240
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000202",
+      "title": "體驗學員流程",
+      "sortOrder": 1,
+      "defaultExpanded": false,
+      "lessons": [
+        {
+          "id": "00000000-0000-4000-8000-000000000303",
+          "title": "完成進度驗收",
+          "contentPath": "lessons/03-next-step.md",
+          "type": "text",
+          "sortOrder": 0,
+          "isPreview": false,
+          "status": "published",
+          "duration": 300
+        }
+      ]
+    }
+  ]
+}

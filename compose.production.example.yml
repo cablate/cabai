@@ -1,0 +1,95 @@
+x-cabai-image: &cabai-image
+  image: "${CABAI_IMAGE:-cabai:local}"
+  build:
+    context: .
+    dockerfile: Dockerfile
+    args:
+      NEXT_PUBLIC_ASSET_HOST: "${NEXT_PUBLIC_ASSET_HOST:-}"
+      NEXT_PUBLIC_SITE_NAME: "${NEXT_PUBLIC_SITE_NAME:-}"
+      NEXT_PUBLIC_SITE_INITIAL: "${NEXT_PUBLIC_SITE_INITIAL:-}"
+      NEXT_PUBLIC_CREATOR_NAME: "${NEXT_PUBLIC_CREATOR_NAME:-}"
+      NEXT_PUBLIC_CREATOR_URL: "${NEXT_PUBLIC_CREATOR_URL:-}"
+      NEXT_PUBLIC_SITE_DESCRIPTION: "${NEXT_PUBLIC_SITE_DESCRIPTION:-}"
+      NEXT_PUBLIC_SITE_LOGO: "${NEXT_PUBLIC_SITE_LOGO:-}"
+      NEXT_PUBLIC_SITE_SOCIAL_IMAGE: "${NEXT_PUBLIC_SITE_SOCIAL_IMAGE:-}"
+      NEXT_PUBLIC_SITE_ILLUSTRATION: "${NEXT_PUBLIC_SITE_ILLUSTRATION:-}"
+
+services:
+  postgres:
+    image: postgres:18.0-alpine
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-cabai}"
+      POSTGRES_USER: "${POSTGRES_USER:-cabai}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the Compose environment file}"
+    volumes:
+      - cabai-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    <<: *cabai-image
+    command: ["node", "scripts/run-migrations.mjs"]
+    environment:
+      DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL with postgres as the Compose hostname}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    init: true
+    restart: "no"
+
+  app:
+    <<: *cabai-image
+    env_file:
+      - path: "${CABAI_ENV_FILE:-.env.production}"
+        required: false
+    environment:
+      DATABASE_URL: "${DATABASE_URL:?Set DATABASE_URL with postgres as the Compose hostname}"
+      AUTH_SECRET: "${AUTH_SECRET:?Set a random AUTH_SECRET of at least 32 characters}"
+      AUTH_URL: "${AUTH_URL:?Set AUTH_URL to the public application origin}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:?Set NEXTAUTH_URL to the public application origin}"
+      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL to the public application origin}"
+      CRON_SECRET: "${CRON_SECRET:?Set a random CRON_SECRET for authenticated readiness checks}"
+      MIGRATION_MODE: external
+      STORAGE_PROVIDER: local
+      LOCAL_STORAGE_PATH: /app/data/storage
+      BACKUP_PROVIDER: disabled
+      LOCAL_BACKUP_PATH: /app/data/backups
+      DB_BACKUP_WRITES_ENABLED: "false"
+      SCHEDULED_TASKS_ENABLED: "false"
+      SCHEDULER_MODE: disabled
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    volumes:
+      - cabai-app-data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /app/logs:rw,noexec,nosuid,size=32m,uid=1000,gid=1000,mode=0700
+      - /app/.next/cache:rw,noexec,nosuid,size=64m,uid=1000,gid=1000,mode=0700
+    ports:
+      - "127.0.0.1:${CABAI_PORT:-3000}:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "scripts/container-health.mjs", "--readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    init: true
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  cabai-postgres-data:
+  cabai-app-data:

@@ -1,0 +1,37 @@
+{
+  "name": "cabai",
+  "version": "0.1.0",
+  "description": "Connect Codex to CabAI public discovery and the signed-in user's learning content.",
+  "author": {
+    "name": "CabAI contributors"
+  },
+  "homepage": "https://example.com",
+  "keywords": [
+    "cabai",
+    "learning",
+    "skills",
+    "courses"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CabAI",
+    "shortDescription": "Use your CabAI courses, Skills, and updates.",
+    "longDescription": "Discover public CabAI resources and securely access the signed-in user's entitled courses, Skills, and unread updates. This plugin has no administrative capabilities.",
+    "developerName": "CabAI contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://example.com",
+    "privacyPolicyURL": "https://example.com/privacy",
+    "termsOfServiceURL": "https://example.com/terms",
+    "defaultPrompt": [
+      "查看我的 CabAI 未讀更新。",
+      "列出我可以閱讀的 CabAI 課程。",
+      "找出 CabAI 上可用的公開 Skills。"
+    ],
+    "brandColor": "#0F1F1D"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "assets": [
+    {
+      "byteLength": 10,
+      "logicalId": "asset-cover",
+      "mimeType": "image/png",
+      "path": "assets/cover.png",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "visibility": "public"
+    },
+    {
+      "byteLength": 20,
+      "logicalId": "asset-handout",
+      "mimeType": "application/pdf",
+      "path": "assets/handout.pdf",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "visibility": "public"
+    }
+  ],
+  "course": {
+    "chapters": [
+      {
+        "defaultExpanded": true,
+        "lessons": [
+          {
+            "assetLogicalIds": [
+              "asset-handout"
+            ],
+            "chapterLogicalId": "chapter-1",
+            "content": "Hello",
+            "duration": null,
+            "isPreview": true,
+            "logicalId": "lesson-1",
+            "order": 0,
+            "publicationIntent": "published",
+            "resources": [
+              {
+                "assetLogicalId": "asset-handout",
+                "logicalId": "resource-1",
+                "order": 0,
+                "title": "Handout",
+                "type": "download"
+              }
+            ],
+            "title": "Welcome",
+            "type": "text"
+          }
+        ],
+        "logicalId": "chapter-1",
+        "order": 1,
+        "title": "First"
+      },
+      {
+        "defaultExpanded": false,
+        "lessons": [],
+        "logicalId": "chapter-2",
+        "order": 2,
+        "title": "Second"
+      }
+    ],
+    "description": "Neutral fixture",
+    "imageAssetLogicalId": "asset-cover",
+    "logicalId": "course-1",
+    "order": 0,
+    "publicationIntent": "published",
+    "title": "Portable course"
+  },
+  "exportedAt": "2026-07-13T00:00:00.000Z",
+  "schema": "course-export/v1",
+  "sourceIdentity": "database-id"
+}

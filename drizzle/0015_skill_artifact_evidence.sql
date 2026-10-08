@@ -1,0 +1,5 @@
+ALTER TABLE "skill_releases" DROP CONSTRAINT "chk_skill_releases_published_artifact";--> statement-breakpoint
+ALTER TABLE "skill_releases" ADD COLUMN "artifact_manifest" jsonb;--> statement-breakpoint
+ALTER TABLE "skill_releases" ADD COLUMN "artifact_validation" jsonb;--> statement-breakpoint
+ALTER TABLE "skill_releases" ADD COLUMN "artifact_validated_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "skill_releases" ADD CONSTRAINT "chk_skill_releases_published_artifact" CHECK ("skill_releases"."status" = 'draft' OR ("skill_releases"."artifact_media_id" IS NOT NULL AND "skill_releases"."checksum_sha256" IS NOT NULL AND "skill_releases"."artifact_manifest" IS NOT NULL AND "skill_releases"."artifact_validation" IS NOT NULL AND "skill_releases"."artifact_validated_at" IS NOT NULL));

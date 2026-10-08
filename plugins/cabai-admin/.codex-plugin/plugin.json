@@ -1,0 +1,37 @@
+{
+  "name": "cabai-admin",
+  "version": "0.1.1",
+  "description": "Operate CabAI administration through scoped, auditable Agent APIs.",
+  "author": {
+    "name": "CabAI contributors"
+  },
+  "homepage": "https://example.com",
+  "keywords": [
+    "cabai",
+    "admin",
+    "content",
+    "publishing"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "CabAI Admin",
+    "shortDescription": "Manage CabAI with scoped administrative access.",
+    "longDescription": "Manage CabAI content, publishing, members, orders, media, entitlements, and operations through explicit scopes, readiness checks, and confirmation gates.",
+    "developerName": "CabAI contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write",
+      "Interactive"
+    ],
+    "websiteURL": "https://example.com",
+    "privacyPolicyURL": "https://example.com/privacy",
+    "termsOfServiceURL": "https://example.com/terms",
+    "defaultPrompt": [
+      "檢查 CabAI 內容發布 readiness。",
+      "建立一篇 CabAI Library 草稿。",
+      "查看 CabAI 後台目前需要處理的項目。"
+    ],
+    "brandColor": "#7C3AED"
+  }
+}

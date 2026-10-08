@@ -1,0 +1,8 @@
+# Local preview only. Port 3199 is intentionally expected to be unavailable so
+# browser requests exercise the maintenance fallback without touching production.
+ORIGIN_BASE_URL="http://127.0.0.1:3199"
+ORIGIN_TIMEOUT_MS="3000"
+RETRY_AFTER_SECONDS="60"
+
+# Optional. Only https:// and mailto: URLs are rendered.
+# CONTACT_URL="https://example.com/contact"

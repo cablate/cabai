@@ -1,0 +1,54 @@
+name: Release evidence (manual candidate)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evidence:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Build candidate image from exact commit
+        run: |
+          set -euo pipefail
+          docker build \
+            --build-arg APP_VERSION="${GITHUB_REF_NAME}" \
+            --build-arg APP_REVISION="${GITHUB_SHA}" \
+            --build-arg APP_SOURCE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            -t cabai:release-candidate .
+          docker save cabai:release-candidate -o cabai-release-candidate.tar
+          sha256sum cabai-release-candidate.tar > SHA256SUMS
+
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: cabai:release-candidate
+          format: spdx-json
+          output-file: cabai-release-candidate.spdx.json
+          upload-artifact: false
+
+      - name: Attest candidate archive provenance
+        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
+        with:
+          subject-path: cabai-release-candidate.tar
+
+      - name: Upload candidate evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-evidence-${{ github.sha }}
+          path: |
+            SHA256SUMS
+            cabai-release-candidate.spdx.json
+          retention-days: 14

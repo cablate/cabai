@@ -1,0 +1,1 @@
+ALTER TABLE "agent_api_keys" ALTER COLUMN "permissions" SET DEFAULT '{content:read}';

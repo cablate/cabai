@@ -1,0 +1,1 @@
+ALTER TABLE "agent_information_items" ADD COLUMN "body_markdown" text DEFAULT '' NOT NULL;

@@ -1,0 +1,40 @@
+name: Feature request
+description: Propose an outcome-driven improvement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: actor_job
+    attributes:
+      label: Actor and job to be done
+      description: Who needs this, and what outcome are they trying to reach?
+    validations:
+      required: true
+  - type: textarea
+    id: current_gap
+    attributes:
+      label: Current gap
+      description: What real workflow is blocked or unnecessarily difficult today?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Observable success
+      description: What would prove the improvement worked?
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Boundaries and risks
+      description: Payment, entitlement, auth, data, migration, provider, privacy, UI, or deployment implications.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I described the user/operator outcome rather than only a preferred implementation.
+          required: true
+        - label: I did not include private data, credentials, or paid course content.
+          required: true

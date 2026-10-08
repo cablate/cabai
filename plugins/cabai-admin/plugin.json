@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "cabai-admin",
+  "version": "0.1.1",
+  "description": "Operate CabAI administration through scoped, auditable Agent APIs.",
+  "author": {
+    "name": "CabAI contributors",
+    "url": "https://example.com"
+  },
+  "homepage": "https://example.com",
+  "keywords": [
+    "cabai",
+    "admin",
+    "content",
+    "publishing"
+  ]
+}

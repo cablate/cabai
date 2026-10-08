@@ -1,0 +1,1 @@
+ALTER TABLE "provider_sync_jobs" ADD COLUMN "snapshot_id" text;

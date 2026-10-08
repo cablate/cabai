@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible CabAI defect without sensitive data
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not report security vulnerabilities here. Follow SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: Release tag or commit SHA where the problem occurs.
+    validations:
+      required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Deployment profile
+      options:
+        - Local host app + Compose PostgreSQL
+        - Container or VPS
+        - Zeabur
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use neutral data and redact credentials, IDs, email addresses, and private content.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and safe logs
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification attempted
+      description: Commands, tests, browser state, or minimal fixture used.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, customer data, payment details, private course content, and production resource IDs.
+          required: true
+        - label: This is not a security vulnerability report.
+          required: true

@@ -1,0 +1,14 @@
+{
+  "name": "cabai-maintenance-fallback-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/worker.js && node --check src/monitor.js && node --test",
+    "test": "node --test",
+    "dev": "npx --yes wrangler@4.110.0 dev",
+    "deploy": "npx --yes wrangler@4.110.0 deploy",
+    "deploy:cabai-production": "npx --yes wrangler@4.110.0 deploy --config wrangler.cabai-production.jsonc",
+    "tail": "npx --yes wrangler@4.110.0 tail"
+  }
+}

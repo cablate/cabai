@@ -1,0 +1,1 @@
+ALTER TABLE "skill_releases" ADD COLUMN "content_markdown" text DEFAULT '' NOT NULL;

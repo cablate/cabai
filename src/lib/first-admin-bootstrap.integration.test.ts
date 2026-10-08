@@ -1,0 +1,92 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { cleanTestData, createTestUser } from "@/test/helpers";
+import {
+  bootstrapFirstAdmin,
+} from "./first-admin-bootstrap";
+import type { FirstAdminBootstrapError } from "./first-admin-bootstrap";
+
+const token = "bootstrap-token-123456789012345678901234";
+const originalToken = process.env.ADMIN_BOOTSTRAP_TOKEN;
+
+beforeAll(() => {
+  process.env.ADMIN_BOOTSTRAP_TOKEN = token;
+});
+
+beforeEach(async () => {
+  await cleanTestData();
+});
+
+afterAll(async () => {
+  await cleanTestData();
+  if (originalToken === undefined) delete process.env.ADMIN_BOOTSTRAP_TOKEN;
+  else process.env.ADMIN_BOOTSTRAP_TOKEN = originalToken;
+});
+
+describe("first-admin bootstrap persistence", () => {
+  it("creates the first admin and rejects a second bootstrap", async () => {
+    const created = await bootstrapFirstAdmin({
+      email: "test-bootstrap-owner@example.com",
+      token,
+    });
+
+    expect(created.email).toBe("test-bootstrap-owner@example.com");
+    await expect(
+      bootstrapFirstAdmin({ email: "test-bootstrap-second@example.com", token }),
+    ).rejects.toMatchObject({ code: "already_completed" } satisfies Partial<FirstAdminBootstrapError>);
+
+    const admins = await db
+      .select({ email: users.email, role: users.role })
+      .from(users)
+      .where(eq(users.role, "admin"));
+    expect(admins).toEqual([{ email: created.email, role: "admin" }]);
+  });
+
+  it("promotes an existing member without creating a duplicate user", async () => {
+    const existing = await createTestUser({
+      email: "test-bootstrap-existing@example.com",
+      role: "member",
+    });
+
+    const promoted = await bootstrapFirstAdmin({
+      email: existing.email.toUpperCase(),
+      token,
+    });
+
+    expect(promoted.id).toBe(existing.id);
+    const [row] = await db
+      .select({ id: users.id, role: users.role })
+      .from(users)
+      .where(eq(users.email, existing.email));
+    expect(row).toEqual({ id: existing.id, role: "admin" });
+  });
+
+  it("rejects invalid tokens without changing the database", async () => {
+    await expect(
+      bootstrapFirstAdmin({
+        email: "test-bootstrap-invalid@example.com",
+        token: "wrong-token",
+      }),
+    ).rejects.toMatchObject({ code: "invalid_token" } satisfies Partial<FirstAdminBootstrapError>);
+
+    const rows = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.email, "test-bootstrap-invalid@example.com"));
+    expect(rows).toEqual([]);
+  });
+
+  it("serializes simultaneous first-admin attempts", async () => {
+    const results = await Promise.allSettled([
+      bootstrapFirstAdmin({ email: "test-bootstrap-race-a@example.com", token }),
+      bootstrapFirstAdmin({ email: "test-bootstrap-race-b@example.com", token }),
+    ]);
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    const rejected = results.find((result) => result.status === "rejected");
+    expect(rejected).toMatchObject({ reason: expect.objectContaining({ code: "already_completed" }) });
+  });
+});

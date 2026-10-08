@@ -1,0 +1,60 @@
+{
+  "canonicalSchema": "drizzle",
+  "exceptions": [
+    {
+      "kind": "canonical-applied-variant",
+      "schema": "drizzle",
+      "expectedTag": "0001_service_configs_soft_delete",
+      "expectedHash": "df271f1e6d132802e586020f53a776cbf70b00c77117cfa861d0faa0314bc029",
+      "expectedCreatedAt": "1778638872264",
+      "observedHash": "df271f1e6d132802e586020f53a776cbf70b00c77117cfa861d0faa0314bc029",
+      "observedCreatedAt": "1779199735432",
+      "reason": "Production applied the identical tracked SQL before the repaired 0001 journal timestamp was frozen.",
+      "evidence": "docs/operations/DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility"
+    },
+    {
+      "kind": "canonical-applied-variant",
+      "schema": "drizzle",
+      "expectedTag": "0002_add_purchase_button_fields",
+      "expectedHash": "a11a0c68ebd9c3ae6c9e587f102a9a967d7df00bfa1d169dd69664426a98a69b",
+      "expectedCreatedAt": "1778638872265",
+      "observedHash": "a11a0c68ebd9c3ae6c9e587f102a9a967d7df00bfa1d169dd69664426a98a69b",
+      "observedCreatedAt": "1779199735433",
+      "reason": "Production applied the identical tracked SQL before the repaired 0002 journal timestamp was frozen.",
+      "evidence": "docs/operations/DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility"
+    },
+    {
+      "kind": "canonical-hash-variant",
+      "schema": "drizzle",
+      "hash": "a3f54d519086fc290c3f554edcb269b743b818937e26dabf769e096b5ceb5022",
+      "createdAt": "1781528151647",
+      "expectedTag": "0010_slippery_valeria_richards",
+      "reason": "Production applied an earlier reviewed form of the journaled user_api_tokens migration before the tracked SQL was frozen.",
+      "evidence": "docs/operations/DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility"
+    },
+    {
+      "kind": "canonical-hash-variant",
+      "schema": "drizzle",
+      "hash": "457b9275e78444c19c845b54fe0026a87d33bffd04e11e4cd05f892f21e63ce0",
+      "createdAt": "1783529898311",
+      "expectedTag": "0011_absurd_gravity",
+      "reason": "Local and production applied an earlier reviewed form of the site_config and payment identity migration before the tracked SQL was frozen.",
+      "evidence": "docs/operations/DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility"
+    },
+    {
+      "kind": "legacy-ledger-entry",
+      "schema": "public",
+      "hash": "532f5c0c83223878fc1c075a44bf277e15b6feca3b58c4a8fa5132676653ca44",
+      "reason": "A legacy public-schema ledger contains the initial migration; the canonical ledger is now drizzle.__drizzle_migrations.",
+      "evidence": "docs/operations/DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility"
+    },
+    {
+      "kind": "legacy-ledger-entry",
+      "schema": "public",
+      "hash": "manual_0010_1781547332330",
+      "createdAt": "1781547332330",
+      "reason": "Production records the historical manual site_config migration marker in the legacy public-schema ledger.",
+      "evidence": "docs/operations/DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility"
+    }
+  ]
+}

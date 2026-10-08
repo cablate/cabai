@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "idx_user_purchases_free_claim_unique" ON "user_purchases" USING btree ("user_id","plan_id") WHERE granted_by = 'free_claim' AND revoked_at IS NULL;

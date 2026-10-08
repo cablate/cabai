@@ -1,0 +1,14 @@
+{
+  "name": "Learning Site",
+  "short_name": "Learning",
+  "icons": [
+    {
+      "src": "/oss/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#edf2f8",
+  "background_color": "#edf2f8",
+  "display": "standalone"
+}

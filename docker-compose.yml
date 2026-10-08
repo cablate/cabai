@@ -1,0 +1,28 @@
+# Local development database only.
+# This file intentionally does not define a Cab AI app container or any
+# production provider. Keep production credentials and production databases
+# outside this Compose project.
+services:
+  postgres:
+    image: postgres:18.0-alpine
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-paid_service}"
+      POSTGRES_USER: "${POSTGRES_USER:-paid_service}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-paid_service_local_only}"
+    ports:
+      # Bind to loopback only. Override POSTGRES_PORT when 5432 is occupied.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # PostgreSQL 18 stores PGDATA below /var/lib/postgresql; mount the
+      # parent so the named volume remains durable across image upgrades.
+      - paid-service-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: "no"
+
+volumes:
+  paid-service-postgres-data:

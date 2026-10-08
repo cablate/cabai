@@ -1,0 +1,1 @@
+ALTER TABLE "chapters" ADD COLUMN "default_expanded" boolean DEFAULT false NOT NULL;

@@ -1,0 +1,158 @@
+# Configuration
+
+這份文件整理架站需要的設定。第一次試用先照 [開始使用](GETTING-STARTED.md)操作；要換網站名稱、啟用登入或連接外部服務時，再查下面對應的項目。
+
+## Configuration authority
+
+- 範例與操作者入口：`.env.example`
+- Typed inspection：`src/lib/config/platform.ts`
+- Human/JSON diagnosis：`scripts/doctor.ts`
+- Runtime selection：各adapter與`src/instrumentation.node.ts`
+- Deployment injection：Zeabur／container／secret manager，不進Git或image
+
+Doctor 會找出缺少、格式錯誤或互相衝突的設定。設定通過後，再實際登入或送出測試請求，確認服務可用。
+
+## Shared branding: one codebase, different public assets
+
+修改下列設定就能換上自己的名稱和圖片，不需要改元件。這些值在**建置時**寫入網頁，修改後請重新建置：
+
+| Variable | Default / purpose |
+|---|---|
+| `NEXT_PUBLIC_SITE_NAME` / `NEXT_PUBLIC_SITE_INITIAL` | Default site name / initial |
+| `NEXT_PUBLIC_CREATOR_NAME` / `NEXT_PUBLIC_CREATOR_URL` | Default creator identity |
+| `NEXT_PUBLIC_SITE_DESCRIPTION` | Neutral description; at most 300 characters |
+| `NEXT_PUBLIC_SITE_LOGO` | `/oss/icon.svg`; desktop/mobile logo, metadata icon, organization logo and web manifest |
+| `NEXT_PUBLIC_SITE_SOCIAL_IMAGE` | `/oss/social.png`; default Open Graph / Twitter image, preferably 1200×630 |
+| `NEXT_PUBLIC_SITE_ILLUSTRATION` | `/oss/learning.svg`; homepage illustration fallback, not course-specific covers |
+
+Assets must be same-origin static paths, such as `/site/logo.png`. Supported extensions: svg/png/webp/jpg/jpeg/ico. Remote URLs, API paths, traversal, encoded paths, query strings and credentials are rejected. Serve externally stored branding through a same-origin static/CDN route if needed; this change does not widen image/CSP host permissions or fetch remote content.
+
+For a local build, place **public, rights-cleared images only** in ignored `public/site/`, set the variables and rebuild. For Docker, the reference Compose forwards these public values as builder arguments; supply them to the Compose interpolation environment (`--env-file`), not only the container's runtime `env_file`. Make assets available in the build context before building. The image will contain those public assets; ignored by Git does not mean private in the image. Never put paid materials, personal data or secrets there or in `NEXT_PUBLIC_*`/build arguments.
+
+`NEXT_PUBLIC_*` settings are compiled into client code. Restarting an already-built image does not change its branding: rebuild from the same commit with the intended public values. Runtime-only contact/legal/provider secrets retain their existing configuration boundary. No product source edits are required, but this is not runtime theme switching or a multi-tenant system.
+
+The application generates `/manifest.webmanifest` from the shared site identity. Logo and description settings update site metadata; they do not rewrite your authored pages or course content.
+
+## Core requirements
+
+| Variable | 用途 | 失敗語意 |
+| --- | --- | --- |
+| `DATABASE_URL` | PostgreSQL | production startup fatal；test URL另需`_test` guard |
+| `AUTH_SECRET` | Auth.js signing，至少32字元 | fatal |
+| `NEXT_PUBLIC_APP_URL` | canonical public origin／Server Actions allowed origin | fatal，僅允許scheme + host |
+| `AUTH_URL`／`NEXTAUTH_URL` | Auth callback/runtime compatibility | deployment profile需與canonical URL一致 |
+| `CRON_SECRET` | detailed health與cron auth | operational/security boundary |
+| `STORAGE_PROVIDER` | `local`或`r2` | local需persistent volume；r2缺key會misconfigured |
+| `BACKUP_PROVIDER` | `disabled`、`local`、`r2` | 可disabled；啟用後misconfig通常degraded |
+| `SCHEDULER_MODE` | `disabled`、`in_process`、`external` | 無效值misconfigured；只能有一個job owner |
+| `MIGRATION_MODE` | `auto`或`external` | production entrypoint在schema不current時fail closed |
+
+## Optional capabilities
+
+### Portaly
+
+新版設定使用`PORTALY_API_KEY`與`PORTALY_CALLBACK_SECRET`；商家profile由API key帶入，不需要另外設定`PORTALY_PROFILE_ID`。既有mode-specific `PORTALY_LIVE_*`／`PORTALY_TEST_*`設定仍需`PORTALY_PROFILE_ID`以維持相容。Checkout、plan sync與reconciliation啟用後，Portaly就是必要依賴；minimal profile可完全disabled。
+
+啟用付款時必須明確設定`PORTALY_MODE=test|live`，而且API key prefix必須和mode相符。統一型與mode-specific憑證不可混用，避免`PORTALY_API_KEY`的優先序默默蓋過預期憑證。正式收款部署應另設`PORTALY_REQUIRE_LIVE=true`；此時test mode會在startup與checkout建立前fail closed。完整契約見`docs/contracts/portaly-live-mode-safety.md`。
+
+### Discord
+
+OAuth／role功能需要client ID/secret、bot token、guild ID與redirect URI；capability selector已完整檢查這五項。
+
+### Agent API
+
+Runtime使用DB-issued hashed API keys／user tokens。capability summary明確標示database-managed，不再依賴或示範`AGENT_API_KEY`。
+
+### Sentry
+
+`SENTRY_DSN`／`NEXT_PUBLIC_SENTRY_DSN`存在才啟用；build source-map token只放受保護build environment。未填 DSN 時維持停用，網站仍可正常啟動。
+
+### Kit Email capture
+
+`KIT_GENERAL_UPDATES_FORM_ID`與`KIT_GENERAL_UPDATES_FORM_UID`必須同時明確設定，才會在`/subscribe`渲染表單。
+未設定、不完整或不合法時沒有表單、沒有Kit script，不收集或送出信箱。不使用原維護者的表單作fallback。
+識別碼是public embed設定，不是管理secret；Kit API key不得送到client。啟用前自行配置自己的表單與隱私告知。
+
+### Google member login
+
+Google is the only supported OAuth sign-in provider in this release. With either credential absent/blank, the login page stays local and explains that member login is not configured; it does not automatically send visitors to Google. The application uses Auth.js provider ID `google` at `/api/auth/[...nextauth]`; it reads `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` from the private runtime environment. Do not add another provider without the account-linking review required by `SECURITY.md` and `src/lib/auth.config.ts`.
+
+1. In a Google Cloud project you own, configure the consent screen/audience and create an OAuth client of type **Web application**. Use your own app name, support contact, domain and privacy information; never reuse the original operator's project. Follow [Google's web-server OAuth setup](https://developers.google.com/identity/protocols/oauth2/web-server).
+2. Register the exact authorized redirect URI: for local development, `http://localhost:3000/api/auth/callback/google`; for your HTTPS host, `https://learn.example.com/api/auth/callback/google` with your own domain. Scheme, hostname, port and path must match; `localhost` and `127.0.0.1` are different. If the console requests an authorized JavaScript origin, use the origin without the callback path.
+3. Store the client ID/secret in `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`. Align `AUTH_URL`, `NEXTAUTH_URL` and `NEXT_PUBLIC_APP_URL` to the same chosen origin. Restart the development app or recreate the Compose app (`up -d`); a plain container restart does not import edited environment values.
+4. If Google restricts your app to test users or an organization, ensure the intended account is eligible. Choose the audience that matches the people who should be able to sign in.
+5. In a new browser session, sign in through `/login`, return to your own host and verify the resulting member session. Check sign-out and repeat login. Then separately verify entitlements and admin denial. Use an ordinary member account for this check, separately from administrator setup.
+
+For `redirect_uri_mismatch`, compare the actual redirect URI with the console and configured origin; do not loosen redirect checks. For a generic server-configuration error, inspect redacted server logs for missing credentials, secret/schema/database errors before changing Cloud projects. Never paste a client secret, authorization code, cookie or full callback URL into an issue.
+
+### First admin
+
+`ADMIN_BOOTSTRAP_TOKEN`是現行一次性bootstrap selector，至少32字元。`.env.example`已移除runtime未使用的`ADMIN_BOOTSTRAP_EMAILS`。
+
+在隔離／新站確認尚無 admin 後，產生隨機 token，僅放在私有 runtime environment，重啟後開啟 `/setup/admin`。建立首位 admin 後，移除 token 並重新啟動；bootstrap provider 應不再出現在 `/api/auth/providers`。token 不是長期管理員密碼，不應保留或分享。既有 admin 存在時 bootstrap 會拒絕再次建立；不要為重跑測試刪除正式管理員。
+
+2026-10-08 隔離 Linux 容器已用中性帳號確認無效 token 拒絕、首 admin session／admin HTTP page 成功、第二次 bootstrap 拒絕，以及移除 token 後 provider 消失。這不是 Google OAuth 或一般會員／管理員 browser 完整驗收。
+
+## Storage and backup separation
+
+- `STORAGE_PROVIDER=local`：`LOCAL_STORAGE_PATH`必須在persistent volume。
+- `STORAGE_PROVIDER=r2`：需要account、access key、secret、media bucket。
+- `BACKUP_PROVIDER=local`：`LOCAL_BACKUP_PATH`需persistent/private。
+- `BACKUP_PROVIDER=r2`：使用獨立private backup bucket/prefix，不可共用public media bucket。
+- `DB_BACKUP_WRITES_ENABLED=true`與restore write opt-in都是額外安全門，不應因provider credential存在而自動寫入。
+- `DB_BACKUP_KEEP`未設定時為336（30分鐘排程下7天）；明確值必須是safe integer且至少3。錯誤值在建立backup sink／dump／retention delete前fail closed。
+
+## Deployment profiles
+
+| Profile | Payment | Storage | Backup | Scheduler | Sentry/edge |
+| --- | --- | --- | --- | --- | --- |
+| Minimal local/self-host | disabled | local persistent | disabled或local | disabled | optional/off |
+| Single-instance production | optional/Portaly | local或R2 | local或private R2 | exactly one `in_process` owner | optional |
+| 自訂多副本部署（需另外設計與測試） | optional | shared/persistent | one writer | `external` + one runner | external monitor recommended |
+
+## Secret and evidence rules
+
+Git ignores `.env` and `.env.*` runtime files (including custom deployment/test-run names). Only reviewed synthetic `.env.example` and `.env.test` templates are exceptions. Never put real secrets into those exceptions or force-add an ignored environment file; ignore rules do not sanitize already tracked files or Git history.
+
+- 不提交`.env`、`.env.production`、`.mcp.json`、DSN、API key、OAuth secret、DB URL或resource ID。
+- 不把secret放Docker build args、URL query、screenshot、issue、PR、Discord或Email。
+- Evidence只保存redacted timestamp、status、opaque ID、commit/digest、migration tag與不含客戶資料的summary。
+- Credential rotation不是一般deploy／diagnosis副作用，需要明確owner批准。
+- Production origin若可被直接存取，必須定義可信proxy header與ingress policy；目前Repository無法證明Cloudflare-only origin。
+
+## Selector validation status
+
+設定組合由 `src/lib/config/platform.test.ts` 測試。新增環境變數或外部服務時，請一起更新範例、Doctor 和測試，讓缺值提示與實際使用的設定一致。
+
+本文件在required env、capability selector、secret boundary、deployment profile或Doctor output改變時更新。
+
+## Frontend component configuration
+
+`components.json` 是 shadcn CLI 的專案描述，不是產品 runtime 設定。它固定目前的 Next.js／Tailwind v4／RSC 路徑、`@/*` alias 與 Phosphor icon library，讓後續可以查詢或新增官方 shadcn 元件。
+
+它不會自動取代 `src/components/ui` 的 CabAI 元件，也不代表所有頁面只能使用既有元件。新增 UI 時仍先確認官方元件的行為與可及性，再用 CabAI semantic tokens、Phosphor icons 與既有元件組合；只有在缺少必要能力時才新增元件。
+
+本節在 shadcn CLI 設定、元件路徑、icon library 或設計 token 改變時更新。
+
+
+## Portable Agent plugin origin
+
+The bundled `plugins/cabai` and `plugins/cabai-admin` skills require an operator-confirmed `CABAI_BASE_URL`. No maintainer-hosted default is selected. Plugin metadata uses `https://example.com` as a placeholder, not an API target. Configure and verify your installation origin before using tokens. A token is scoped to its issuing installation; never forward it to example.com, the maintainer service, or a redirected/untrusted origin. Runtime-generated connection instructions use your `NEXT_PUBLIC_APP_URL`; keep it accurate.
+
+### Outbound service webhook destinations
+
+Use a directly reachable public HTTPS endpoint with a valid certificate for its hostname. Private/loopback/reserved addresses, mapped/transition IPv6, URL credentials and fragments are rejected. Ordinary public IPv4 and global-unicast IPv6 are supported; special-purpose IPv6 ranges are intentionally rejected. DNS answers are checked together and one validated address is pinned for that attempt, so changing DNS cannot redirect the connection after validation. Redirects are not followed: configure the final HTTPS URL. A failing pinned address is retried through the existing outbox policy, not silently replaced with an unchecked address.
+
+A total 10-second deadline covers DNS and HTTP; non-success response bodies are capped at 64 KiB. The received HTTP status still controls retries even when its body is too large or interrupted. Keep optional jobs disabled until your own receiver is configured and tested. Before enabling delivery, send a test to your own receiver and check its response.
+
+### Client-IP trust
+
+`TRUSTED_CLIENT_IP_HEADER` is an optional private runtime setting: blank (default), `x-real-ip`, or `cf-connecting-ip`. Blank/invalid values use one shared `unknown` IP bucket in every environment; admin action buckets additionally include the authenticated admin ID and action. Only enable a header when your ingress overwrites it from verified connection identity and direct access to the origin is blocked. Malformed/multiple IP values are rejected, and no other forwarding header is used as fallback. Follow the exact [ingress recipe](../operations/DEPLOYMENT-AND-OPERATIONS.md#https-ingress-and-member-login); proxy deployment must be verified by the operator.
+
+### Legacy Marketplace: unavailable in the first release
+
+`POST /api/portaly-marketplace` always returns HTTP 503 and does not read, store or process the request. Setting `PORTALY_MARKETPLACE_WEBHOOK_SECRET` does not enable it. The legacy data-only signature leaves the event and timestamp unauthenticated; freshness, deduplication and a prior-paid check cannot prevent relabeling captured signed data. Do not configure new provider deliveries to this endpoint or promise automatic Marketplace fulfillment/refunds.
+
+Existing operators must pause that provider delivery before upgrading, export/reconcile pending orders using verified provider records and retain the existing database/event audit trail. Do not delete pending records or treat retries/503 as successful delivery. Existing admin reconciliation remains, but generic retries and mapping creation now leave unprocessed legacy records quarantined without changing their stored status. Processing requires an admin-supplied verified provider export; the importer explicitly confirms the event type, rather than trusting old rawPayload metadata. Check affected payments/refunds against the provider before importing. This restriction does not disable the separate standard `/api/callback` integration, whose signed body event must match its header; real-provider acceptance of that integration is still installation-specific.
+
+Re-enabling legacy ingress requires a provider-specific authenticated event/timestamp contract or independently authenticated order-status reconciliation, plus malicious/legitimate route regression tests. Do not silently switch it to standard callback v1 or add an unsafe bypass flag.
