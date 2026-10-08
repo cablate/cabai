@@ -35,7 +35,7 @@ describe("shared public branding", () => {
     } finally { vi.unstubAllEnvs(); vi.resetModules(); }
   });
   it("wires shared branding into desktop/mobile and metadata without file overrides", () => {
-    for (const file of ["src/components/layout/header.tsx", "src/components/layout/mobile-drawer.tsx", "src/app/layout.tsx"]) {
+    for (const file of ["src/components/layout/header.tsx", "src/components/layout/mobile-drawer.tsx", "src/app/layout.tsx", "src/components/join/subscribe-page.tsx"]) {
       expect(readFileSync(file, "utf8")).toContain("PUBLIC_BRANDING.logo");
       expect(readFileSync(file, "utf8")).not.toContain('"/oss/icon.svg"');
     }

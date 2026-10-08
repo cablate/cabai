@@ -30,6 +30,11 @@ function stringEnvironment(): Record<string, string> {
       AUTH_URL: baseURL,
       NEXTAUTH_URL: baseURL,
       NODE_ENV: "development",
+      // Default acceptance proves a fresh install needs no external accounts.
+      AUTH_GOOGLE_ID: "",
+      AUTH_GOOGLE_SECRET: "",
+      KIT_GENERAL_UPDATES_FORM_ID: "",
+      KIT_GENERAL_UPDATES_FORM_UID: "",
     }).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
   );
 }
@@ -59,7 +64,7 @@ export default defineConfig({
         command: devCommand,
         url: `${baseURL}${webServerReadyPath}`,
         env: stringEnvironment(),
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false,
         timeout: 180_000,
         stdout: "pipe",
         stderr: "pipe",

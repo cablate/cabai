@@ -8,11 +8,22 @@
 - Typed inspection：`src/lib/config/platform.ts`
 - Human/JSON diagnosis：`scripts/doctor.ts`
 - Runtime selection：各adapter與`src/instrumentation.node.ts`
-- Deployment injection：Zeabur／container／secret manager，不進Git或image
+- Deployment injection：部署平台／container／secret manager，不進Git或image
 
 Doctor 會找出缺少、格式錯誤或互相衝突的設定。設定通過後，再實際登入或送出測試請求，確認服務可用。
 
 ## Shared branding: one codebase, different public assets
+
+### What belongs to your installation?
+
+| Kind | Where it belongs |
+|---|---|
+| Project name, license and contributor links | Keep the CabAI project information in the repository; it is not your site's configuration. |
+| Your site's name, description and public images | Set the branding variables below and provide your public assets before building. |
+| Your service accounts and secrets | Use your private environment file or hosting secret store. Never put credentials in `NEXT_PUBLIC_*` values. |
+| Courses, members, purchases and private files | Use the application's database and storage, not source files or Git. |
+
+Start with the local demo profile and leave optional integrations empty. Add your own Google client when you need member login; add payment, mail, Discord or external storage only when you intend to use them. A successful Doctor check validates configuration, not a completed OAuth login or a delivered email.
 
 修改下列設定就能換上自己的名稱和圖片，不需要改元件。這些值在**建置時**寫入網頁，修改後請重新建置：
 
@@ -32,6 +43,8 @@ For a local build, place **public, rights-cleared images only** in ignored `publ
 `NEXT_PUBLIC_*` settings are compiled into client code. Restarting an already-built image does not change its branding: rebuild from the same commit with the intended public values. Runtime-only contact/legal/provider secrets retain their existing configuration boundary. No product source edits are required, but this is not runtime theme switching or a multi-tenant system.
 
 The application generates `/manifest.webmanifest` from the shared site identity. Logo and description settings update site metadata; they do not rewrite your authored pages or course content.
+
+另外設定 `SITE_LEGAL_NAME`（法律／營運名稱）、`CONTACT_EMAIL`（聯絡信箱）與 `SITE_DEFAULT_LOCALE`（例如 `zh-TW`）。這三項由 runtime 讀取，不要留著範例聯絡資訊公開上線。開發環境修改後重啟；Compose 修改後重新建立 app 容器。
 
 ## Core requirements
 
@@ -89,7 +102,11 @@ For `redirect_uri_mismatch`, compare the actual redirect URI with the console an
 
 `ADMIN_BOOTSTRAP_TOKEN`是現行一次性bootstrap selector，至少32字元。`.env.example`已移除runtime未使用的`ADMIN_BOOTSTRAP_EMAILS`。
 
-在隔離／新站確認尚無 admin 後，產生隨機 token，僅放在私有 runtime environment，重啟後開啟 `/setup/admin`。建立首位 admin 後，移除 token 並重新啟動；bootstrap provider 應不再出現在 `/api/auth/providers`。token 不是長期管理員密碼，不應保留或分享。既有 admin 存在時 bootstrap 會拒絕再次建立；不要為重跑測試刪除正式管理員。
+在隔離／新站確認尚無 admin 後，用 [開始使用](GETTING-STARTED.md)的 secret 產生命令再產生一個獨立 token，僅放在私有 runtime environment。開發環境停掉並重新執行 `npm run dev`；Compose 使用原本的 env file、project name 與 Compose file 執行 `up -d app`，不要只 `restart`（不會載入新 env）。
+
+開啟自己站點的 `/setup/admin`，在表單填入管理員 email 與 token。可升級同 email 的既有使用者，或建立新管理員；選擇自己控制且未來能用 Google 登入的 email。成功後應進入 `/admin`，可編輯內容並重新整理確認讀回。這個初次 session 不需要 Google credentials，但 session 結束後的日常登入需要 Google；bootstrap 不能取代一般會員的登入與權益驗收。
+
+建立首位 admin 後，從私有 env 移除 token 並重新建立／啟動 app；bootstrap provider 應不再出現在 `/api/auth/providers`。token 不是長期管理員密碼，不應保留、分享或放 URL。既有 admin 存在時 bootstrap 會拒絕再次建立；不要為重跑測試刪除正式管理員。
 
 2026-10-08 隔離 Linux 容器已用中性帳號確認無效 token 拒絕、首 admin session／admin HTTP page 成功、第二次 bootstrap 拒絕，以及移除 token 後 provider 消失。這不是 Google OAuth 或一般會員／管理員 browser 完整驗收。
 

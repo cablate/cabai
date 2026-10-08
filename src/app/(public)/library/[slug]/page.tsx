@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { cache } from "react";
+import { BRAND_NAME } from "@/lib/constants";
 import { LibraryDetail } from "@/components/public/library/library-detail";
 import { articleSchema, breadcrumbListSchema, serializeJsonLd } from "@/lib/seo/json-ld";
 import { selectRelatedLibraryEntries } from "@/lib/seo/library-discovery";
@@ -77,7 +78,7 @@ export default async function LibraryDetailPage({ params }: LibraryDetailPagePro
     dateModified: result.value.updatedAt,
   });
   const breadcrumb = breadcrumbListSchema([
-    { name: "CabAI", url: "/" },
+    { name: BRAND_NAME, url: "/" },
     { name: "Library", url: "/library" },
     { name: result.value.title, url: canonical },
   ]);

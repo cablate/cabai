@@ -24,6 +24,9 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Fixed
 
+- **Self-host branding:** public pages, FAQ, structured data and default sharing images follow the configured site identity. Product-specific covers still take precedence. The optional maintenance page uses neutral wording.
+- **First-run guidance:** separates first-admin setup from everyday Google login, explains empty production sites versus the local demo, and preserves existing environment files when copying templates.
+
 - **Unconfigured member login:** installations without complete Google credentials stay on a local explanatory page instead of automatically navigating to a provider error. Configured Google sign-in retains its existing flow.
 
 - **Portable containers:** shell entrypoints retain LF on Windows clones; bounded log/cache mounts are writable by the non-root runtime without making application code writable.

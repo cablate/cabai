@@ -22,7 +22,7 @@
     "test:integration": "npm run test:integration:prepare && vitest run --config vitest.integration.config.ts",
     "test:skill-vertical": "npm run test:integration:prepare && vitest run --config vitest.integration.config.ts src/lib/__tests__/skill-information-vertical.integration.test.ts src/lib/__tests__/skill-information-action-drift.integration.test.ts",
     "test:e2e:prepare": "npm run test:integration:prepare && tsx --env-file=.env.test scripts/prepare-e2e-fixture.ts",
-    "test:e2e": "npm run test:e2e:prepare && playwright test",
+    "test:e2e": "npm run test:e2e:prepare && playwright test && playwright test --config playwright.services.config.ts",
     "test:e2e:install": "playwright install chromium",
     "test:reliability": "node --test scripts/retired-operator-scripts.test.mjs scripts/container-source.test.mjs scripts/sanitize-standalone.test.mjs scripts/admin-cost-budgets.test.mjs scripts/probe-production-health.test.mjs scripts/runtime-next-config.test.mjs scripts/next-image-boundary.test.mjs && npm --prefix deploy/cloudflare/maintenance-worker test",
     "test:watch": "vitest --config vitest.config.ts",

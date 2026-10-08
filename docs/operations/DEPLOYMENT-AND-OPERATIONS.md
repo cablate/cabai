@@ -10,6 +10,8 @@ The reference profile runs one application, PostgreSQL and a one-shot migration 
 
 Read the actual Compose file and [Configuration](../development/CONFIGURATION.md) before changing it. Use a dedicated Compose project name and isolated volumes when evaluating the example; do not reuse a production project's name for tests.
 
+The reference Compose explicitly fixes local storage, disabled backups and disabled scheduling in `app.environment`; those values override the app's `env_file`. Editing only `.env.production` does not enable R2, backups or jobs. If you deliberately change profiles, review the Compose settings and persistent paths together rather than assuming every environment-file selector takes effect.
+
 ## Host and operator prerequisites
 
 The reference production target is **one Linux host with Docker Engine and Compose v2**, persistent disk, and an operator-managed reverse proxy on that same host. Windows/Docker Desktop is useful for evaluation, not evidence of an unattended Linux production installation. Building images downloads npm packages and base images; budget host memory/disk and hosting/domain costs yourself. No maintained public image registry is supplied before the first release.
@@ -71,6 +73,10 @@ docker compose --env-file .env.production -p cabai-evaluation -f compose.product
 ```
 
 These commands use the `.env.production` file created above. For an existing site, follow the upgrade section instead.
+
+Open `http://localhost:3000` on the Docker host (or your selected `CABAI_PORT`). A remote host's loopback port is not reachable at your workstation's `localhost`; use a reviewed SSH tunnel for private evaluation, or complete the HTTPS ingress below. Keep the port loopback-bound.
+
+This deployment starts an empty site, not the seeded local demo. The production image does not include the demo loader/fixtures and the loader refuses `NODE_ENV=production`; do not run the local `npm run script:seed-demo` command in the app container. Use bootstrap and admin authoring to create your own content; use [Getting Started](../development/GETTING-STARTED.md) for the disposable sample-course evaluation. Creating the first admin does not require Google, but configure it before ending the bootstrap session if you need to sign in again.
 
 Check the installation before inviting members:
 

@@ -6,16 +6,25 @@ Follow this guide to run CabAI on your computer and explore the sample course. Y
 
 Requirements: Node.js `>=22.12 <25`, npm 10+, Docker Engine with Compose v2, and Git. These requirements come from `.node-version`, `.nvmrc`, `package.json` and `docker-compose.yml`.
 
+If you do not yet have a checkout, start in a new directory:
+
+```bash
+git clone https://github.com/cablate/cabai.git
+cd cabai
+```
+
+Run the remaining commands from that repository root. Check `node --version`, `npm --version` and `docker compose version`, and start your Docker engine before continuing. For a second installation, use a different Compose project name and free database/app ports; `cabai-dev` below identifies one persistent local installation, not a disposable command name.
+
 For a new checkout, copy `.env.example` to `.env`. If `.env` already exists, edit it instead of overwriting it:
 
 ```bash
 # macOS / Linux
-cp .env.example .env
+if [ ! -e .env ]; then cp .env.example .env; else echo '.env already exists; keeping your configuration'; fi
 ```
 
 ```powershell
 # PowerShell
-Copy-Item .env.example .env
+if (-not (Test-Path -LiteralPath .env)) { Copy-Item .env.example .env } else { Write-Host '.env already exists; keeping your configuration' }
 ```
 
 Run this command twice to generate two different secrets. Put one in `AUTH_SECRET` and the other in `CRON_SECRET`:
@@ -56,13 +65,13 @@ The Compose command starts PostgreSQL. `npm run dev` starts the application. The
 
 Open `http://localhost:3000`. Follow the demo course/product links and view a preview lesson. The seed receipt should report **2 chapters, 3 lessons, free_claim=enabled**. `/subscribe` should say subscriptions are disabled and should not ask for an email while Kit is unset. `doctor` should report a connected database and disabled optional capabilities. You can check login and member access after setting up authentication.
 
-The sample course is licensed in `fixtures/demo-course/manifest.json`. Sign in to claim the course, track progress or enter the admin area.
+The sample course is licensed in `fixtures/demo-course/manifest.json`. Ordinary member login is needed to claim the course and track progress; you can try admin editing first through the separate bootstrap flow below.
 
-## 3. Enable login separately
+## 3. Try admin editing, then enable member login
 
-Configure your own Google OAuth client with the exact origin and redirect URL described in [CONFIGURATION](CONFIGURATION.md). Set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`; restart the app. Use a client created for your own site.
+No Google account configuration is needed for the first admin bootstrap session. Follow [First admin](CONFIGURATION.md#first-admin): add a fresh `ADMIN_BOOTSTRAP_TOKEN` to your private `.env`, stop and restart `npm run dev`, then open `http://localhost:3000/setup/admin`. Enter the administrator email and token in the form, not in the URL. After reaching `/admin`, edit a sample lesson and reload it to check that changes persist. Remove the token and restart the app after setup. `ADMIN_BOOTSTRAP_EMAILS` is not the runtime selector; do not change roles directly in the database.
 
-For the first administrator, follow the `ADMIN_BOOTSTRAP_TOKEN` / `/setup/admin` instructions in the configuration guide. `ADMIN_BOOTSTRAP_EMAILS` is not the runtime selector. Remove the bootstrap token after setup. Use this setup flow rather than changing roles directly in the database.
+Bootstrap is not a reusable login method. To sign in again after that session ends, configure your own Google OAuth client with the exact origin and redirect URL described in [Google member login](CONFIGURATION.md#google-member-login). Set `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET`; restart the app. Use the same email as bootstrap for future admin login, and a separate ordinary account to verify course claiming, progress and admin denial. This OAuth check is separate from a successful bootstrap.
 
 ## 4. Verify changes safely
 

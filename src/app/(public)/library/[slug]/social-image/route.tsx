@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getPublishedLibraryEntry } from "@/lib/services/library-service";
+import { BRAND_NAME } from "@/lib/constants";
 
 export const runtime = "nodejs";
 
@@ -40,7 +41,7 @@ export async function GET(
             fontSize: 28,
           }}
         >
-          <span style={{ fontWeight: 700 }}>CabAI Library</span>
+          <span style={{ fontWeight: 700 }}>{BRAND_NAME} Library</span>
           <span style={{ color: "#52645a" }}>Knowledge Hub</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
@@ -69,7 +70,7 @@ export async function GET(
         <div style={{ display: "flex", gap: 14, fontSize: 22, color: "#315f48" }}>
           {tags.length > 0
             ? tags.map((tag) => <span key={tag}>#{tag}</span>)
-            : <span>cabai.net</span>}
+            : <span>Library</span>}
         </div>
       </div>
     ),

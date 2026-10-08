@@ -25,6 +25,7 @@ import { TrustBlock } from "@/components/offerings/trust-block";
 import { Markdown } from "@/components/ui/markdown";
 import { CommonSalesSections } from "@/components/offerings/common-sales-sections";
 import { BRAND_NAME } from "@/lib/constants";
+import { PUBLIC_BRANDING } from "@/lib/config/public-branding";
 import {
   ArrowUpRight,
   ArrowLeft,
@@ -47,7 +48,7 @@ import {
 
 export const dynamic = "force-dynamic";
 const siteName = BRAND_NAME;
-const defaultOgImage = "/oss/social.png";
+const defaultOgImage = PUBLIC_BRANDING.socialImage;
 const unavailableProductMetadata: Metadata = {
   title: "商品不存在",
   robots: { index: false, follow: false },

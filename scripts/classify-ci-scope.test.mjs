@@ -42,6 +42,14 @@ test("unknown paths fail closed to full verification", () => {
   assert.equal(isLightweightPath("new-root-runtime-config.json"), false);
 });
 
+test("both browser environment profiles retain full and container verification", () => {
+  for (const path of ["playwright.config.ts", "playwright.services.config.ts"]) {
+    const result = classifyPaths([path]);
+    assert.equal(result.full, true);
+    assert.equal(result.container, true);
+  }
+});
+
 test("manual and detection fallback force every safety gate", () => {
   const result = classifyPaths(["__FORCE_FULL__"]);
 

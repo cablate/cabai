@@ -269,7 +269,7 @@ export function renderMaintenancePage(contactUrl = null) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="color-scheme" content="light">
-  <title>服務暫時無法使用 — CabAI</title>
+  <title>服務暫時無法使用</title>
   <style>
     :root {
       color-scheme: light;
@@ -409,12 +409,12 @@ export function renderMaintenancePage(contactUrl = null) {
 <body>
   <main>
     <section class="panel" aria-labelledby="maintenance-title">
-      <div class="brand" aria-label="CabAI">
-        <span class="brand-mark" aria-hidden="true">C</span>
-        <span>CabAI</span>
+      <div class="brand" aria-label="網站服務狀態">
+        <span class="brand-mark" aria-hidden="true">!</span>
+        <span>網站服務</span>
       </div>
       <p class="eyebrow">目前無法連線</p>
-      <h1 id="maintenance-title">CabAI 暫時連不上</h1>
+      <h1 id="maintenance-title">網站暫時無法連線</h1>
       <p class="message">我們正在處理。你可以先休息一下，過幾分鐘再重新整理。</p>
       <div class="actions">
         <a class="action action-primary" href="">重新整理</a>

@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { getEntitledPlanIds } from "@/lib/access";
 import { breadcrumbListSchema, serializeJsonLd } from "@/lib/seo/json-ld";
 import { BRAND_NAME } from "@/lib/constants";
+import { PUBLIC_BRANDING } from "@/lib/config/public-branding";
 import { Compass } from "@phosphor-icons/react/dist/ssr";
 import { getPublishedCourseStatsForPlan } from "@/lib/queries/course-catalog";
 import { ProductStartGuide } from "@/components/offerings/product-start-guide";
@@ -13,7 +14,7 @@ import { loadPublicProductCatalog } from "@/lib/public-product-catalog";
 
 const logger = createLogger("products-page");
 const siteName = BRAND_NAME;
-const defaultOgImage = "/oss/social.png";
+const defaultOgImage = PUBLIC_BRANDING.socialImage;
 
 export const dynamic = "force-dynamic";
 

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { KitEmailJoinForm } from "@/components/join/kit-email-join-form";
 import { BRAND_NAME } from "@/lib/constants";
+import { PUBLIC_BRANDING } from "@/lib/config/public-branding";
 import type { SubscribePageDefinition } from "@/lib/subscribe-page";
 
 interface SubscribePageProps {
@@ -13,7 +14,7 @@ export function SubscribePage({ page }: SubscribePageProps) {
     <main className="relative isolate min-h-[100dvh] overflow-hidden bg-[#fbf7f0] px-5 py-5 text-[#0d2452] sm:px-8 sm:py-8 lg:px-12 lg:py-10">
       <div className="pointer-events-none absolute -bottom-4 -left-8 -z-10 hidden h-[28rem] w-[20rem] overflow-hidden opacity-[0.14] lg:block" aria-hidden="true">
         <Image
-          src="/oss/icon.svg"
+          src={PUBLIC_BRANDING.logo}
           alt=""
           width={480}
           height={480}
@@ -30,7 +31,7 @@ export function SubscribePage({ page }: SubscribePageProps) {
             className="group inline-flex min-h-12 items-center gap-3 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#5148b9]"
           >
             <span className="relative size-11 shrink-0 overflow-hidden rounded-xl border border-[#efd9bf] bg-[#fff2df] shadow-sm transition-transform duration-300 group-hover:-rotate-2 group-hover:scale-[1.03] sm:size-13">
-              <Image src="/oss/icon.svg" alt="" fill sizes="52px" className="object-cover" priority />
+              <Image src={PUBLIC_BRANDING.logo} alt="" fill sizes="52px" className="object-cover" priority />
             </span>
             <span className="font-serif text-2xl font-semibold tracking-[-0.04em] text-[#0d2452] sm:text-3xl">
               {BRAND_NAME}

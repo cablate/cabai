@@ -1,14 +1,16 @@
 /**
  * 首頁 FAQ 資料 — 與 faq.tsx 共用，也用於 FAQPage JSON-LD。
  */
+import { BRAND_NAME } from "@/lib/constants";
+
 export const faqs = [
   {
-    q: "沒有 Agent API，也可以使用 CabAI 嗎？",
-    a: "可以。你仍然可以在網站上瀏覽公開內容、購買課程並進入會員中心學習。Agent API 是額外提供給 AI 的入口，不是使用 CabAI 的前提。",
+    q: `沒有 Agent API，也可以使用 ${BRAND_NAME} 嗎？`,
+    a: `可以。你仍然可以在網站上瀏覽公開內容、購買課程並進入會員中心學習。Agent API 是額外提供給 AI 的入口，不是使用 ${BRAND_NAME} 的前提。`,
   },
   {
     q: "AI 會讀到我沒有購買的課程嗎？",
-    a: "不會。公開 Library 與公開 Skill 可以直接讀取；付費課程與其他受保護內容會依 CabAI 帳號權限判斷。Agent API Key 不會繞過購買限制。",
+    a: `不會。公開 Library 與公開 Skill 可以直接讀取；付費課程與其他受保護內容會依 ${BRAND_NAME} 帳號權限判斷。Agent API Key 不會繞過購買限制。`,
   },
   {
     q: "公告、Library 與 Skill 有什麼不同？",

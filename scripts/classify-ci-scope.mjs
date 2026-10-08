@@ -37,6 +37,7 @@ const CONTAINER_FILES = new Set([
   "package-lock.json",
   "package.json",
   "playwright.config.ts",
+  "playwright.services.config.ts",
   "postcss.config.mjs",
   "tailwind.config.ts",
   "tsconfig.json",

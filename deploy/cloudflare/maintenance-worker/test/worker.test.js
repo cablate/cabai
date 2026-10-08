@@ -71,7 +71,7 @@ test("origin request uses the independent hostname and preserves path, query, me
 });
 
 for (const status of [500, 502, 503, 504]) {
-  test(`HTML navigation receives a branded 503 when origin returns ${status}`, async () => {
+  test(`HTML navigation receives a neutral maintenance 503 when origin returns ${status}`, async () => {
     const response = await handleRequest(request(), ENV, {
       fetch: fetchReturning(new Response(`origin ${status}`, { status })),
     });
@@ -81,7 +81,7 @@ for (const status of [500, 502, 503, 504]) {
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal(response.headers.get("x-cabai-fallback"), "maintenance");
     assert.match(response.headers.get("content-type"), /^text\/html/);
-    assert.match(await response.text(), /CabAI 暫時連不上/);
+    assert.match(await response.text(), /網站暫時無法連線/);
   });
 }
 
@@ -93,7 +93,7 @@ test("an unapproved origin 5xx is passed through unchanged", async () => {
   assert.equal(response.status, 501);
 });
 
-test("Cloudflare transport 530 becomes branded HTML 503 instead of leaking provider HTML", async () => {
+test("Cloudflare transport 530 becomes neutral maintenance HTML 503 instead of leaking provider HTML", async () => {
   const response = await handleRequest(request(), ENV, {
     fetch: fetchReturning(new Response("cloudflare origin error", {
       status: 530,
@@ -103,7 +103,16 @@ test("Cloudflare transport 530 becomes branded HTML 503 instead of leaking provi
 
   assert.equal(response.status, 503);
   assert.equal(response.headers.get("x-cabai-fallback"), "maintenance");
-  assert.match(await response.text(), /CabAI 暫時連不上/);
+  assert.match(await response.text(), /網站暫時無法連線/);
+});
+
+test("maintenance page uses neutral website copy rather than a fixed product brand", () => {
+  const html = renderMaintenancePage();
+
+  assert.match(html, /<title>服務暫時無法使用<\/title>/);
+  assert.match(html, /aria-label="網站服務狀態"/);
+  assert.match(html, /<h1 id="maintenance-title">網站暫時無法連線<\/h1>/);
+  assert.doesNotMatch(html, /CabAI/);
 });
 
 test("Cloudflare transport 530 becomes stable JSON 503 for APIs", async () => {

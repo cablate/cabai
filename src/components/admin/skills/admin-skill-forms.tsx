@@ -61,7 +61,7 @@ export function SkillForm({ skill }: { skill?: {
         <option value="github">GitHub repository</option>
       </Select>
       <div className="grid gap-5 sm:grid-cols-2">
-        <Input id="sourceRepositoryUrl" name="sourceRepositoryUrl" label="GitHub repository URL" defaultValue={skill?.sourceRepositoryUrl ?? ""} placeholder="https://github.com/cablate/example-skill" />
+        <Input id="sourceRepositoryUrl" name="sourceRepositoryUrl" label="GitHub repository URL" defaultValue={skill?.sourceRepositoryUrl ?? ""} placeholder="https://github.com/your-org/example-skill" />
         <Input id="sourceRef" name="sourceRef" label="GitHub 正式版本／Ref" defaultValue={skill?.sourceRef ?? ""} placeholder="v1.0.0" />
       </div>
       <p className="text-xs leading-5 text-text-muted">Commit SHA 與驗證時間由 CabAI 來源驗證流程寫入；更換 repository 或 ref 時會自動清除舊證據。</p>

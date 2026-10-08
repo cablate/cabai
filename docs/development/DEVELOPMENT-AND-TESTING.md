@@ -15,7 +15,7 @@ Use this guide to choose tests for your change and set up an isolated test datab
 | `verify:fast` | Static, unit, component and reliability | Contract, integration, build, E2E |
 | `verify` / `verify:full` | Fast, contract, integration, production build | Playwright E2E, hosted services or full security audit |
 | `build` | `next build --webpack` | Deployability/persistence/restore or correct permissions |
-| `test:e2e` | Prepares E2E fixtures, runs Playwright | All roles/providers/browsers; inspect current config |
+| `test:e2e` | Prepares E2E fixtures, runs the default disabled-services profile and a separate synthetic enabled-services profile | Real Google OAuth or Kit delivery; enabled-profile requests are intercepted |
 | `smoke` | Reads an already-started app's public/auth boundaries | Starts no server and does not complete real checkout |
 
 Run the closest tests while working, then the wider checks your change needs. Record results for the revision you tested.

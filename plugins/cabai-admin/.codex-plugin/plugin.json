@@ -5,7 +5,7 @@
   "author": {
     "name": "CabAI contributors"
   },
-  "homepage": "https://example.com",
+  "homepage": "https://github.com/cablate/cabai",
   "keywords": [
     "cabai",
     "admin",
@@ -24,9 +24,7 @@
       "Write",
       "Interactive"
     ],
-    "websiteURL": "https://example.com",
-    "privacyPolicyURL": "https://example.com/privacy",
-    "termsOfServiceURL": "https://example.com/terms",
+    "websiteURL": "https://github.com/cablate/cabai",
     "defaultPrompt": [
       "檢查 CabAI 內容發布 readiness。",
       "建立一篇 CabAI Library 草稿。",

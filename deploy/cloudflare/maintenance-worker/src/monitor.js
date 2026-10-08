@@ -291,7 +291,7 @@ export async function recordOriginFailure(storage, env, event, runtime = {}) {
     originStatusLine,
     `原因：${trafficFailureReasonLabel(normalized.reason)}`,
     `次數：${count} 次 / ${TRAFFIC_FAILURE_WINDOW_MS / 60_000} 分鐘`,
-    "說明：正式 incident 仍以網站存活／營運就緒連續失敗為準；請查看 Zeabur runtime 紀錄。",
+    "說明：正式 incident 仍以網站存活／營運就緒連續失敗為準；請查看部署平台的應用程式執行紀錄。",
     `時間：${now.toISOString()}`,
   ].join("\n");
 

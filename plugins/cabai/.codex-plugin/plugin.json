@@ -5,7 +5,7 @@
   "author": {
     "name": "CabAI contributors"
   },
-  "homepage": "https://example.com",
+  "homepage": "https://github.com/cablate/cabai",
   "keywords": [
     "cabai",
     "learning",
@@ -24,9 +24,7 @@
       "Write",
       "Interactive"
     ],
-    "websiteURL": "https://example.com",
-    "privacyPolicyURL": "https://example.com/privacy",
-    "termsOfServiceURL": "https://example.com/terms",
+    "websiteURL": "https://github.com/cablate/cabai",
     "defaultPrompt": [
       "查看我的 CabAI 未讀更新。",
       "列出我可以閱讀的 CabAI 課程。",

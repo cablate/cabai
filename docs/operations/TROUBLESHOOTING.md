@@ -12,12 +12,18 @@
 
 ## 依症狀往下查
 
+首次本機安裝卡住時，先在 repo root 確認 Docker engine 已啟動、`docker compose version` 可用，再使用原本的 project name 執行 `docker compose --project-name cabai-dev --env-file .env ps -a`。檢查 `POSTGRES_PORT` 與 `DATABASE_URL` 的 port 是否一致；本機 Node 連 `127.0.0.1`，production Compose app 連 service hostname `postgres`。不要把 `.env` 或解析後的 Compose config 貼出來。
+
+`npm run doctor -- --json` 適用於本機 `.env` 與依賴已安裝的 checkout；production 容器請用[部署指南的 readiness 命令](DEPLOYMENT-AND-OPERATIONS.md#inspect-stop-and-restart-without-erasing-data)。Doctor 指出缺表時先核對 DB 目標與 migration 結果；不要用 `db:push` 或刪 volume 跳過 migration。改 `.env` 密碼不會更新已存在的 PostgreSQL 使用者，改 Compose env 也需重新建立 app 容器才生效。
+
 | 症狀 | 先檢查什麼 | 下一步 |
 |---|---|---|
 | 單頁或 API 回 500，其他頁正常 | request ID、該路由的 log、最近改動 | 用相同操作重現，檢查功能本身。 |
 | 出現維護頁或 API 503 | 應用程式狀態、health/readiness、Worker 紀錄 | 分清楚是來源站失效，還是代理連不到來源站。 |
 | Health 200，但 readiness 503 | readiness 的錯誤分類、Doctor、job 紀錄 | 修正對應的資料庫、設定或排程問題。 |
 | Google 登入失敗 | 登入憑證、三個網站 origin、Google callback URI | 依[Google 設定](../development/CONFIGURATION.md#google-member-login)核對；通用 server error 另查 DB、schema 和 Auth secret。 |
+| `/setup/admin` 未啟用或 token 被拒 | token 長度、app 是否載入新 env、是否已存在 admin | 依[首次管理員設定](../development/CONFIGURATION.md#first-admin)核對；已完成就用 Google 日常登入，不刪管理員或重設 DB。 |
+| 改品牌後仍顯示舊名稱／圖片 | build-time env、build context 的公開資產、目前 image | 依[品牌設定](../development/CONFIGURATION.md#shared-branding-one-codebase-different-public-assets)重新建置並重新建立 app；restart 舊 image 不會換品牌。 |
 | Checkout 502 或 500 | Portaly 回應、逾時、本地 pending order、callback URL | 保留訂單狀態，先確認服務商是否已建立付款 session。 |
 | Checkout 503，提示設定不完整 | Doctor、`PORTALY_MODE`、key 類型與 `PORTALY_REQUIRE_LIVE` | 修正相互衝突的設定，不用關掉檢查來繼續收款。 |
 | 付款成功但課程沒開通 | callback 驗證結果、訂單關聯、有效 purchase、課程對應 | 依下方付款檢查順序核對，再使用既有對帳流程。 |

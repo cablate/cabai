@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 import { getEntitledPlanIds } from "@/lib/access";
 import { faqPageSchema, serializeJsonLd } from "@/lib/seo/json-ld";
 import { BRAND_NAME } from "@/lib/constants";
+import { PUBLIC_BRANDING } from "@/lib/config/public-branding";
 import {
   getCachedPublishedLibraryEntries,
   getCachedPublishedPlanPresentations,
@@ -23,7 +24,7 @@ import { faqs } from "./sections/faq-data";
 export const dynamic = "force-dynamic";
 
 const siteName = BRAND_NAME;
-const defaultOgImage = "/oss/social.png";
+const defaultOgImage = PUBLIC_BRANDING.socialImage;
 
 export const metadata: Metadata = {
   title: "AI Agent 課程、Skills 與 Agent API",

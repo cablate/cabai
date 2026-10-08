@@ -5,9 +5,9 @@
   "description": "Operate CabAI administration through scoped, auditable Agent APIs.",
   "author": {
     "name": "CabAI contributors",
-    "url": "https://example.com"
+    "url": "https://github.com/cablate/cabai"
   },
-  "homepage": "https://example.com",
+  "homepage": "https://github.com/cablate/cabai",
   "keywords": [
     "cabai",
     "admin",

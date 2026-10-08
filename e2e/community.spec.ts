@@ -9,7 +9,7 @@ test("community onboarding is readable, actionable, and mobile-safe when signed 
   await expect(page.getByText("討論課程裡沒解完的問題")).toBeVisible();
   await expect(page.getByText("分享作品、做法與實作進度")).toBeVisible();
   await expect(page.getByText("查看平台更新與活動資訊")).toBeVisible();
-  const communityEyebrow = page.getByText("本站 學習社群", { exact: true });
+  const communityEyebrow = page.getByText("CabAI 學習社群", { exact: true });
   await expect(communityEyebrow).toHaveCSS("text-transform", "none");
   const join = page.getByRole("link", { name: /建立 CabAI 帳號並連結 Discord/ });
   await expect(join).toHaveAttribute(
@@ -100,7 +100,19 @@ test("free demo product and preview use reader-safe acquisition language and sem
   await expect(page.locator("main main")).toHaveCount(0);
 });
 
-test("unsafe login callback falls back to the member dashboard", async ({ page }) => {
+test("service fixture: login is disabled without credentials; enabled login sanitizes callbacks", async ({ page }, testInfo) => {
+  if (!testInfo.project.metadata.servicesEnabled) {
+    const signinRequests: string[] = [];
+    page.on("request", request => {
+      if (request.url().includes("/api/auth/signin/")) signinRequests.push(request.url());
+    });
+    await page.goto("/login?callbackUrl=https%3A%2F%2Fexample.com%2Fsteal");
+    await expect(page.getByRole("heading", { name: "會員登入尚未設定" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "使用 Google 帳號登入" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "返回首頁" })).toHaveAttribute("href", "/");
+    expect(signinRequests).toEqual([]);
+    return;
+  }
   let submittedCallbackUrl: string | null = null;
   await page.route("**/api/auth/**", async (route) => {
     if (!route.request().url().includes("/api/auth/signin/google")) {
@@ -118,4 +130,7 @@ test("unsafe login callback falls back to the member dashboard", async ({ page }
 
   await page.goto("/login?callbackUrl=https%3A%2F%2Fexample.com%2Fsteal");
   await expect.poll(() => submittedCallbackUrl).toBe("/dashboard");
+  submittedCallbackUrl = null;
+  await page.goto("/login?callbackUrl=%2Fdashboard%2Fprofile");
+  await expect.poll(() => submittedCallbackUrl).toBe("/dashboard/profile");
 });

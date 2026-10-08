@@ -1,6 +1,7 @@
 "use client";
 
 import { PUBLIC_BRANDING } from "@/lib/config/public-branding";
+import { BRAND_NAME } from "@/lib/constants";
 
 
 import { useEffect, useState } from "react";
@@ -84,7 +85,7 @@ export function HeroSection() {
             <span className="flex size-8 items-center justify-center rounded-full border border-accent/20 bg-surface/80 shadow-card backdrop-blur-sm">
               <Sparkle size={15} weight="fill" aria-hidden="true" />
             </span>
-            <span>CabAI Knowledge Hub</span>
+            <span>{BRAND_NAME} Knowledge Hub</span>
             <span className="h-px w-12 bg-accent/35" aria-hidden="true" />
           </div>
 
@@ -96,7 +97,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-6 max-w-lg text-base leading-7 text-text-secondary xl:text-lg xl:leading-8">
-            課程和資源留在 CabAI。你負責學習與決定，AI 依權限取得內容並協助工作。
+            課程和資源留在 {BRAND_NAME}。你負責學習與決定，AI 依權限取得內容並協助工作。
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -158,7 +159,7 @@ function KnowledgeConversationDemo() {
   }
 
   return (
-    <div className="relative mx-auto w-full max-w-[44rem]" aria-label="CabAI Agent API 使用示範">
+    <div className="relative mx-auto w-full max-w-[44rem]" aria-label={`${BRAND_NAME} Agent API 使用示範`}>
       <motion.div
         className="relative w-full min-w-0 overflow-hidden rounded-[1.35rem] border border-border-inverted bg-ink text-text-inverted shadow-[0_32px_76px_-34px_rgba(8,31,24,0.58)]"
         transition={phaseTransition}
@@ -169,7 +170,7 @@ function KnowledgeConversationDemo() {
               <Robot size={19} weight="duotone" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-text-inverted">你的 AI · CabAI</p>
+              <p className="truncate text-sm font-semibold text-text-inverted">你的 AI · {BRAND_NAME}</p>
               <p className="truncate text-xs text-text-inverted/52">已連接 Agent API</p>
             </div>
           </div>
@@ -265,7 +266,7 @@ function KnowledgeConversationDemo() {
                       >
                         <div className="flex items-center gap-2 text-xs font-medium text-amber-soft">
                           <Database size={16} weight="duotone" aria-hidden="true" />
-                          從 CabAI 取得內容
+                          從 {BRAND_NAME} 取得內容
                         </div>
                         <code className="mt-2.5 block break-all whitespace-pre-wrap font-mono text-[0.64rem] leading-4 text-text-inverted/58 sm:text-[0.7rem] sm:leading-5">
                           {scenario.endpoint}

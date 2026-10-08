@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { CONTACT_EMAIL } from "@/lib/config/site-identity";
+import { BRAND_NAME } from "@/lib/constants";
 import { TrackAction } from "@/components/track-action";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,11 @@ import {
 
 export const metadata: Metadata = {
   title: "AI Agent 學習與實作社群",
-  description: "加入 本站 Discord 社群，討論 AI Agent、Claude Code 與 Vibe Coding 實作，分享作品與學習進度。",
+  description: `加入 ${BRAND_NAME} Discord 社群，討論 AI Agent、Claude Code 與 Vibe Coding 實作，分享作品與學習進度。`,
   alternates: { canonical: "/community" },
   openGraph: {
-    title: "CabAI 學習社群",
-    description: "在 CabAI 連結 Discord，課後繼續討論問題、分享實作。",
+    title: `${BRAND_NAME} 學習社群`,
+    description: `在 ${BRAND_NAME} 連結 Discord，課後繼續討論問題、分享實作。`,
     url: "/community",
     type: "website",
   },
@@ -37,8 +38,8 @@ const communityBenefits = [
   "查看平台更新與活動資訊",
 ];
 const communitySteps = [
-  { Icon: SignIn, title: "建立或登入 CabAI 帳號", description: "使用 Google 帳號繼續，不需要再記一組新的密碼。" },
-  { Icon: DiscordLogo, title: "連結 Discord", description: "在個人資料頁完成授權；CabAI 不會取得你的 Discord 密碼。" },
+  { Icon: SignIn, title: `建立或登入 ${BRAND_NAME} 帳號`, description: "使用 Google 帳號繼續，不需要再記一組新的密碼。" },
+  { Icon: DiscordLogo, title: "連結 Discord", description: `在個人資料頁完成授權；${BRAND_NAME} 不會取得你的 Discord 密碼。` },
   { Icon: UsersThree, title: "進入對應社群", description: "系統會協助加入伺服器，並同步免費會員或已購內容對應的身分組。" },
 ];
 
@@ -54,13 +55,13 @@ export default async function CommunityPage() {
         <header className="grid gap-10 pb-12 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)] xl:items-start xl:gap-16 xl:pb-14">
           <div className="max-w-2xl">
             <Badge variant="default" className="bg-surface-muted font-mono tracking-wide text-text-secondary">
-              本站 學習社群
+              {BRAND_NAME} 學習社群
             </Badge>
             <h1 className="mt-5 max-w-2xl font-display text-3xl font-medium leading-[1.08] tracking-[-0.04em] text-text-primary sm:text-4xl md:text-5xl">
               加入學習社群，一起討論 AI 實作
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-text-secondary">
-              這裡是 本站 的 AI 實作交流社群。連上 Discord 後，可以繼續問問題、分享做到哪裡；系統也會依照你擁有的內容同步會員身分組。
+              這裡是 {BRAND_NAME} 的 AI 實作交流社群。連上 Discord 後，可以繼續問問題、分享做到哪裡；系統也會依照你擁有的內容同步會員身分組。
             </p>
             <ul className="mt-6 grid gap-3 text-sm text-text-secondary">
               {communityBenefits.map((benefit) => (
@@ -100,14 +101,14 @@ export default async function CommunityPage() {
                 <Button asChild size="lg" className="w-full">
                   <Link prefetch={false} href={primaryHref}>
                     {session?.user?.id ? <DiscordLogo size={18} weight="fill" /> : <SignIn size={18} weight="bold" />}
-                    {session?.user?.id ? "前往個人資料連結 Discord" : "建立 CabAI 帳號並連結 Discord"}
+                    {session?.user?.id ? "前往個人資料連結 Discord" : `建立 ${BRAND_NAME} 帳號並連結 Discord`}
                     <ArrowRight size={16} weight="bold" />
                   </Link>
                 </Button>
               </TrackAction>
               <TrackAction eventType="community_cta_clicked" properties={{ destination: "products" }}>
                 <Button asChild variant="secondary" size="lg" className="w-full">
-                  <Link prefetch={false} href="/products">先看 CabAI 免費試看與內容</Link>
+                  <Link prefetch={false} href="/products">先看 {BRAND_NAME} 免費試看與內容</Link>
                 </Button>
               </TrackAction>
             </div>
@@ -156,7 +157,7 @@ export default async function CommunityPage() {
             </div>
           <Button asChild variant="secondary" size="md" className="shrink-0">
             <a
-              href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("CabAI 社群連結協助")}`}
+              href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(`${BRAND_NAME} 社群連結協助`)}`}
             >
               {CONTACT_EMAIL}
             </a>
