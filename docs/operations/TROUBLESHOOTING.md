@@ -62,6 +62,12 @@
 
 ## 需要修復或還原時
 
+### Migration hash 不一致
+
+遇到 `SCHEMA_HASH_MISMATCH`，先停下升級，核對正在執行的 commit、完整 migration ledger 與 SQL 原始位元組。Windows 的 `core.autocrlf=true` 曾讓 SQL checkout 變成 CRLF，與 Linux 的 LF 雜湊不同；目前 `.gitattributes` 已固定 SQL 為 LF。更新規則不一定會重寫現有工作目錄，請用新的乾淨 clone 核對 `git ls-files --eol drizzle/*.sql`，不要在有未提交修改的目錄做廣泛 reset。
+
+這只修正來源檔案的一致性，不會修復已由其他位元組版本建立的資料庫。請在受控環境使用既有 `scripts/audit-applied-migrations.ts` 做完整唯讀 ledger 稽核，保留必要的私人結果，再決定修復方式；不要自行改 hash、補 migration 紀錄、擴大豁免或重建正式資料庫。啟動時的最新 migration 檢查不能代替完整 ledger 與實體 schema 比對。
+
 先採用能安全重跑的檢查、對帳或既有重試功能。若要直接修資料，先備份、列出修改目標與復原方式，並與網站負責人確認。
 
 還原演練使用另一個空白資料庫和儲存位置；完整步驟見[部署與維運](DEPLOYMENT-AND-OPERATIONS.md#recovery-and-optional-operations)。重啟、暫停監控或略過 Worker 可以暫時緩解問題，但仍要追查原本的錯誤。API 應回報實際結果，而不是為了停止告警改回成功。

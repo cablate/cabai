@@ -24,6 +24,8 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Fixed
 
+- **Cross-platform migrations:** SQL checkouts now retain LF bytes on Windows and Linux, preventing Git newline conversion from changing Drizzle migration hashes. Existing databases with mismatched hashes still require an audit; no ledger rewrite or hash-check bypass is applied.
+
 - **Self-host branding:** public pages, FAQ, structured data and default sharing images follow the configured site identity. Product-specific covers still take precedence. The optional maintenance page uses neutral wording.
 - **First-run guidance:** separates first-admin setup from everyday Google login, explains empty production sites versus the local demo, and preserves existing environment files when copying templates.
 

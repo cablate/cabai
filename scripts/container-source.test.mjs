@@ -2,9 +2,29 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+
+test("migration SQL checkout bytes stay canonical across Git autocrlf modes", (t) => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "cabai-sql-eol-"));
+  assert.ok(path.resolve(root).startsWith(path.resolve(os.tmpdir()) + path.sep));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  const source = Buffer.from("CREATE TABLE example (id integer);\nSELECT 1;\n");
+  for (const mode of ["true", "false", "input"]) {
+    const cwd = path.join(root, mode);
+    mkdirSync(path.join(cwd, "drizzle"), { recursive: true });
+    writeFileSync(path.join(cwd, ".gitattributes"), readFileSync(new URL("../.gitattributes", import.meta.url)));
+    writeFileSync(path.join(cwd, "drizzle", "0000_example.sql"), source);
+    const git = (...args) => execFileSync("git", ["-c", `core.autocrlf=${mode}`, ...args], { cwd, stdio: "pipe" });
+    git("init", "--quiet");
+    git("add", ".gitattributes", "drizzle/0000_example.sql");
+    rmSync(path.join(cwd, "drizzle", "0000_example.sql"));
+    git("checkout-index", "--all", "--force");
+    assert.deepEqual(readFileSync(path.join(cwd, "drizzle", "0000_example.sql")), source, `checkout bytes drifted with autocrlf=${mode}`);
+    assert.deepEqual(git("show", ":drizzle/0000_example.sql"), source, "tracked SQL must remain unchanged");
+  }
+});
 
 test("Git excludes deployment/test-run secrets but keeps reviewed synthetic templates", () => {
   // Isolate global excludes so only the shipped publication rules are tested.
