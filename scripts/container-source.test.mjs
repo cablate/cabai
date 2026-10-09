@@ -90,6 +90,25 @@ test("Git preserves LF shell entrypoints across Windows checkouts", async () => 
   assert.match(attributes, /^\*\.sh text eol=lf$/m);
 });
 
+test("bare image grants cache writes after COPY without changing code ownership", async () => {
+  const source = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+  const cacheSetup = source.indexOf("RUN mkdir -p /app/.next/cache/images");
+  assert.ok(cacheSetup > source.lastIndexOf("\nCOPY "));
+  assert.ok(cacheSetup < source.indexOf("\nUSER node"));
+  assert.match(source.slice(cacheSetup), /chown -R node:node \/app\/\.next\/cache/);
+  assert.match(source.slice(cacheSetup), /chmod 0700 \/app\/\.next\/cache/);
+  assert.doesNotMatch(source.slice(cacheSetup), /chown[^\n]*node:node \/app(?:\/\.next)?\s*(?:\\|$)/m);
+
+  const workflow = await readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const bareProbe = workflow.match(/docker run --rm --entrypoint sh "\$CABAI_IMAGE" -c \\\r?\n\s*'([^']+)'/);
+  assert.ok(bareProbe, "CI must probe the image without cache mounts");
+  assert.match(bareProbe[1], /id -u/);
+  assert.match(bareProbe[1], /printf synthetic > \/app\/\.next\/cache\/images\/ci-probe\/write-test/);
+  for (const codePath of ["/app/server.js", "/app/.next/server", "/app/.next/static"]) {
+    assert.ok(bareProbe[1].includes(`test ! -w ${codePath}`), codePath);
+  }
+});
+
 test("reference Compose gives the non-root runtime bounded writable log and cache mounts", async () => {
   const source = await readFile(new URL("../compose.production.example.yml", import.meta.url), "utf8");
   for (const mount of ["/app/logs", "/app/.next/cache"]) {

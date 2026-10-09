@@ -24,6 +24,8 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Fixed
 
+- **Direct container image cache:** the non-root runtime can write disposable Next.js image cache without Compose mounts; application code stays root-owned. Read-only deployments still require a writable cache mount. CI now probes both bare-image and mounted filesystem boundaries.
+
 - **Cross-platform migrations:** SQL checkouts now retain LF bytes on Windows and Linux, preventing Git newline conversion from changing Drizzle migration hashes. Existing databases with mismatched hashes still require an audit; no ledger rewrite or hash-check bypass is applied.
 
 - **Self-host branding:** public pages, FAQ, structured data and default sharing images follow the configured site identity. Product-specific covers still take precedence. The optional maintenance page uses neutral wording.

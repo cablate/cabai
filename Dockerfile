@@ -68,7 +68,8 @@ RUN bash /tmp/install-postgres-client.sh \
     && chown -R node:node /app
 
 # Application code and dependencies stay root-owned/read-only. Only the data
-# and log directories created above are writable by the runtime user.
+# and log directories above, plus the cache directory below, are writable by
+# the runtime user.
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -86,6 +87,12 @@ COPY --from=builder /app/scripts/db-backup.ts ./scripts/db-backup.ts
 COPY --from=builder /app/scripts/db-restore-drill.ts ./scripts/db-restore-drill.ts
 COPY --from=builder /app/scripts/audit-applied-migrations.ts ./scripts/audit-applied-migrations.ts
 COPY --from=builder /app/scripts/doctor.ts ./scripts/doctor.ts
+
+# COPY creates root-owned build artifacts. Grant only disposable runtime cache
+# access after the final COPY, including deployments without Compose mounts.
+RUN mkdir -p /app/.next/cache/images \
+    && chown -R node:node /app/.next/cache \
+    && chmod 0700 /app/.next/cache
 
 USER node
 EXPOSE 3000

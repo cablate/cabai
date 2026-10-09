@@ -420,6 +420,9 @@ jobs:
           test "$(docker image inspect "$CABAI_IMAGE" --format '{{.Config.User}}')" = "node"
           docker image inspect "$CABAI_IMAGE" \
             | jq -e '.[0].Config.Env | all(.[]; (startswith("DATABASE_URL=") or startswith("AUTH_SECRET=") or startswith("CRON_SECRET=")) | not)'
+          # Bare-image deployments do not inherit the Compose cache tmpfs.
+          docker run --rm --entrypoint sh "$CABAI_IMAGE" -c \
+            'test "$(id -u)" != 0 && mkdir -p /app/.next/cache/images/ci-probe && printf synthetic > /app/.next/cache/images/ci-probe/write-test && test ! -w /app/server.js && test ! -w /app/.next/server && test ! -w /app/.next/static'
           docker volume create cabai-ci-boundary >/dev/null
           docker run --rm --read-only \
             --tmpfs /tmp --tmpfs /app/logs:rw,noexec,nosuid,size=32m,uid=1000,gid=1000,mode=0700 --tmpfs /app/.next/cache:rw,noexec,nosuid,size=64m,uid=1000,gid=1000,mode=0700 \

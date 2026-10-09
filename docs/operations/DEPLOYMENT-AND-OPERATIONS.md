@@ -86,7 +86,7 @@ Check the installation before inviting members:
 4. Local media survives app recreation, and private media denies expired/revoked/unauthorized reads.
 5. A separate restore target can recover both database state and media, not only a successful dump command.
 
-The image runs as a non-root user. The reference app uses a read-only root filesystem, writable data volume and bounded temporary/cache/log filesystems. Verify these properties on your host; do not disable them just to hide an unexplained write failure. Logs in the reference temporary filesystem are not durable; choose a secret-scrubbed collection/retention strategy if you need incident history.
+The image runs as a non-root user. Its disposable `/app/.next/cache` is writable for direct Dockerfile deployments; application code remains root-owned. The reference app uses a read-only root filesystem, writable data volume and bounded temporary/cache/log filesystems. A read-only deployment still needs the writable cache mount: image ownership cannot override a read-only filesystem. Compose mounts are not inherited when a platform starts the Dockerfile image directly. Verify these properties on your host; do not disable them just to hide an unexplained write failure. Logs in the reference temporary filesystem are not durable; choose a secret-scrubbed collection/retention strategy if you need incident history.
 
 ## HTTPS ingress and member login
 
