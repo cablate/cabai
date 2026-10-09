@@ -4,11 +4,11 @@
  * Scans all active subscription orders, queries Portaly for current status,
  * and updates local records + triggers entitlement revocation if needed.
  *
- * Also cleans up stale pending orders (>24h → expired).
+ * Also cleans up stale pending orders without a provider session (>24h → expired).
  */
 import { db } from "@/lib/db";
 import { orders, userPurchases, type Order } from "@/lib/db/schema";
-import { eq, and, inArray, isNotNull, lt } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import { ensureUserPurchase } from "@/lib/order-lifecycle";
 import { getSubscription } from "@/lib/portaly";
 import { reconcileOrderSubscriptionState } from "@/lib/entitlement-transitions";
@@ -110,7 +110,8 @@ async function runSubscriptionReconciliationLocked(
     }
   }
 
-  // ─── Part 2: Clean up stale pending orders ───
+  // ─── Part 2: Clean up stale pending orders without a provider session ───
+  // Known checkouts require provider evidence; age alone cannot expire them.
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const staleOrders = await db
     .select({ id: orders.id })
@@ -118,6 +119,7 @@ async function runSubscriptionReconciliationLocked(
     .where(
       and(
         eq(orders.status, "pending"),
+        isNull(orders.portalySessionId),
         lt(orders.createdAt, twentyFourHoursAgo),
       ),
     );
@@ -129,6 +131,7 @@ async function runSubscriptionReconciliationLocked(
       .where(and(
         eq(orders.id, stale.id),
         eq(orders.status, "pending"),
+        isNull(orders.portalySessionId),
         lt(orders.createdAt, twentyFourHoursAgo),
       ))
       .returning({ id: orders.id });

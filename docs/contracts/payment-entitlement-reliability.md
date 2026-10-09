@@ -56,6 +56,12 @@ change_context:
 - Subscription `past_due` is a recoverable temporary revoke; cancel-at-period-end keeps access through `cancelEffectiveAt` or the `nextBillingAt` fallback; missing both paid-through timestamps fails closed. Expired/effective cancellation is a permanent revoke. Explicit refund/manual revoke is never auto-restored by a later active provider snapshot.
 - Legacy Marketplace ingress and generic retries do not process unverified events. Reconciliation requires an explicit admin import of verified provider-export evidence; refund processing still requires the corresponding paid event. See [upgrade guidance](../development/CONFIGURATION.md#legacy-marketplace-unavailable-in-the-first-release).
 
+### Pending checkout cleanup
+
+Age-only cleanup must not expire a pending order with a stored Portaly session: payment may have succeeded while its callback was unavailable. Both the cleanup job and subscription reconciliation retain these orders for evidence-based reconciliation, without granting access or calling the provider during cleanup. Pending orders without a session retain the existing 24-hour expiration policy. The conditional update rechecks session absence and pending status, not only the preceding selection.
+
+This is not a bulk recovery worker or a repair of already-terminal orders. Checkout reservation replacement is a separate flow. Follow the [operator recovery guidance](../operations/TROUBLESHOOTING.md) before retrying a purchase or using administrative repair tools.
+
 ### Portaly Payment one-time refund callback
 
 Payment remains an automatic checkout/callback flow, separate from legacy Marketplace imports. `creator_subscription.payment.refunded` uses the authenticated `orderMerchantOrderNumber` to select the exact local order; provider `orderId` is not a local primary key. Mode, amount, currency, full refunded amount and any supplied session/subscription identifiers must agree. Only a local one-time plan with a stored Payment session is handled here; recurring per-charge refund reconciliation remains outside this slice.

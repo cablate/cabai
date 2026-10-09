@@ -8,7 +8,9 @@ import { ensureUserPurchase } from "@/lib/order-lifecycle";
 import { getAccessiblePlanIdsForCourse, checkCourseAccess } from "@/lib/course-access";
 import { db } from "@/lib/db";
 import { orders, userPurchases, planCourses } from "@/lib/db/schema";
-import { eq, and, lt } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { cleanupExpiredOrders } from "@/lib/jobs/cleanup-orders";
+import { runSubscriptionReconciliation } from "@/lib/reconcile-subscriptions";
 
 vi.mock("@/lib/portaly", () => ({
   listSubscriptions: vi.fn().mockResolvedValue({ data: [], error: null }),
@@ -198,20 +200,8 @@ describe("Reconciliation / Cleanup (G1)", () => {
       createdAt: recentDate,
     });
 
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const expired = await db
-      .update(orders)
-      .set({ status: "expired", updatedAt: new Date() })
-      .where(
-        and(
-          eq(orders.status, "pending"),
-          lt(orders.createdAt, cutoff),
-        ),
-      )
-      .returning({ id: orders.id });
-
-    expect(expired.length).toBe(1);
-    expect(expired[0]!.id).toBe(oldOrder.id);
+    const result = await cleanupExpiredOrders();
+    expect(result.expired).toBe(1);
 
     const dbOld = await db.query.orders.findFirst({ where: eq(orders.id, oldOrder.id) });
     expect(dbOld?.status).toBe("expired");
@@ -219,6 +209,61 @@ describe("Reconciliation / Cleanup (G1)", () => {
     const dbRecent = await db.query.orders.findFirst({ where: eq(orders.id, recentOrder.id) });
     expect(dbRecent?.status).toBe("pending");
   });
+
+  it.each(["cleanup", "subscription-reconciliation"] as const)(
+    "%s preserves an old checkout until matching provider evidence completes it once",
+    async (owner) => {
+      await cleanTestData();
+      const user = await createTestUser({ email: `test-session-recovery-${owner}@example.com` });
+      const plan = await createTestPlan({
+        name: `Session Recovery ${owner}`,
+        amount: 1500,
+        currency: "TWD",
+        billingPeriod: "one-time",
+        providerPlanId: "provider-recovery-plan",
+      });
+      const abandonedPlan = await createTestPlan({ name: `Abandoned ${owner}` });
+      const oldDate = new Date(Date.now() - 48 * 60 * 60 * 1000);
+      const sessionId = `session_recovery_${owner}`;
+      const order = await createTestOrder(user.id, plan.id, {
+        portalySessionId: sessionId,
+        expectedAmount: 1500,
+        expectedCurrency: "TWD",
+        createdAt: oldDate,
+      });
+      const abandoned = await createTestOrder(user.id, abandonedPlan.id, { createdAt: oldDate });
+
+      if (owner === "cleanup") {
+        expect((await cleanupExpiredOrders()).expired).toBe(1);
+      } else {
+        const result = await runSubscriptionReconciliation();
+        expect(result.staleCleanedUp).toBe(1);
+        expect(result.errors).toBe(0);
+      }
+
+      expect((await db.query.orders.findFirst({ where: eq(orders.id, abandoned.id) }))?.status).toBe("expired");
+      expect((await db.query.orders.findFirst({ where: eq(orders.id, order.id) }))?.status).toBe("pending");
+      expect(await db.query.userPurchases.findMany({ where: eq(userPurchases.orderId, order.id) })).toHaveLength(0);
+      expect(getCheckoutSessionMock).not.toHaveBeenCalled();
+
+      getCheckoutSessionMock.mockResolvedValueOnce({
+        data: {
+          sessionId,
+          status: "paid",
+          merchantOrderNumber: order.merchantOrderNumber,
+          planId: "provider-recovery-plan",
+          amount: 1500,
+          currency: "TWD",
+          mode: "test",
+        },
+      });
+      expect(await reconcileOrder(order.merchantOrderNumber, user.id)).toBe(true);
+      expect((await db.query.orders.findFirst({ where: eq(orders.id, order.id) }))?.status).toBe("completed");
+      expect(await reconcileOrder(order.merchantOrderNumber, user.id)).toBe(false);
+      expect(getCheckoutSessionMock).toHaveBeenCalledTimes(1);
+      expect(await db.query.userPurchases.findMany({ where: eq(userPurchases.orderId, order.id) })).toHaveLength(1);
+    },
+  );
 });
 
 describe("Reconciliation / Orphan Repair (G2)", () => {

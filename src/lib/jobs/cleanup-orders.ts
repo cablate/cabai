@@ -1,4 +1,4 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, isNull, lt } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders } from "@/lib/db/schema";
 
@@ -7,7 +7,9 @@ export async function cleanupExpiredOrders(now = new Date()): Promise<{ expired:
   const expired = await db
     .update(orders)
     .set({ status: "expired", updatedAt: now })
-    .where(and(eq(orders.status, "pending"), lt(orders.createdAt, cutoff)))
+    // A stored checkout may have been paid while its callback was unavailable.
+    // Age alone is not provider evidence that it can no longer complete.
+    .where(and(eq(orders.status, "pending"), isNull(orders.portalySessionId), lt(orders.createdAt, cutoff)))
     .returning({ id: orders.id });
   return { expired: expired.length };
 }

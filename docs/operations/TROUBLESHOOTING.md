@@ -64,6 +64,17 @@ Marketplace 匯入若出現 `Existing marketplace order does not match the verif
 
 Portaly Payment 與上述 Marketplace 是不同入口。一次性付款的新版 `creator_subscription.payment.refunded` 由 `/api/callback` 處理；`refund_failed` 不會撤權。若日誌顯示退款資料不完整、與本地訂單不符或需要逐期對帳，請核對供應商退款交易與本地 merchant order，不要只因回應 200 就判斷撤權成功。缺少本地訂單或資料庫暫時失敗會回 500 供重試。此處尚不支援訂閱逐期退款，不能用改事件名稱的方式強行套用。
 
+### 維護後補查 Portaly Payment 訂單
+
+先分清楚是哪一段沒完成：Portaly 通知 CabAI 付款結果是「入站 callback」；CabAI 通知 Discord 或其他服務是「交付 outbox」。後台 Webhook 重送只處理後者，補不了從未成功入站的付款。
+
+1. 從訂單詳情核對原 merchant order、Session、test/live、商品及金額，再向 Portaly 查證。成功導回網址本身不是付款證據。不要為了補單重新付款、重建訂單或手動改成 completed。
+2. 訂單仍是 pending 且已有 Session 時，原購買會員登入後開啟 `/success?order=<merchantOrderNumber>`，會走既有 Session 查詢與付款驗證，匹配後才完成訂單。管理員不能用自己的登入冒充購買會員；唯讀 `/api/sessions/<sessionId>` 也不會補發權益。目前沒有通用的管理員批次 pending 補單按鈕。
+3. 訂閱對帳不是 pending checkout 掃描器。兩個逾時清理流程只將沒有 Session、超過 24 小時的 pending 訂單過期；有 Session 的保留待查，不因此自動開權限。這不修復以前已 expired／failed 的訂單；重新發起 checkout 也有自己的舊訂單替換流程，所以先查原單，不要請買家重買來碰運氣。
+4. 若訂單已終止、Session 遺失、金額不合、退款狀態不明或沒有可用的補送權限，保留紀錄，交由操作者核對供應商證據後安排受控修復。「重建訂單」不是這些情況的通用替代；共享 provider plan、付款信箱與站內訂單持有人不一定一對一。
+
+[Portaly 官方契約](https://github.com/portaly-ai/portaly-skills/blob/d2575623dd879553c59304f66d7a301f38c14879/skills/portaly-payment/SKILL.md)列有 Session 查詢和 callback 重送入口，但不能據此假設目前帳號有重送權限，或任何 500 都有保證的自動重試時限。維護前先驗證可用的事件保全／補送方式。原封保存再送出舊 HTTP callback 也不等於有效補送：驗簽有五分鐘時效，需要供應商重新簽署，不能關掉時效檢查或自行偽造事件。
+
 ## 需要修復或還原時
 
 ### Migration hash 不一致
