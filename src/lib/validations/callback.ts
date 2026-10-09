@@ -29,3 +29,18 @@ export const callbackPayloadSchema = z.object({
 
 export type CallbackHeaders = z.infer<typeof callbackHeadersSchema>;
 export type CallbackPayload = z.infer<typeof callbackPayloadSchema>;
+
+// Payment refund outcomes are a different contract from Marketplace refunds.
+export const paymentRefundPayloadSchema = z.object({
+  event: z.literal("creator_subscription.payment.refunded"),
+  mode: z.enum(["test", "live"]),
+  orderId: z.string().min(1),
+  paymentId: z.string().min(1),
+  orderMerchantOrderNumber: z.string().min(1),
+  sessionId: z.string().min(1).optional(),
+  subscriptionId: z.string().min(1).optional(),
+  amount: z.number().int().nonnegative(),
+  refundedAmount: z.number().int().nonnegative(),
+  currency: z.string().length(3),
+  refundedAt: z.string().datetime({ offset: true }),
+});

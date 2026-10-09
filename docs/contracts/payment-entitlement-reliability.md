@@ -56,6 +56,16 @@ change_context:
 - Subscription `past_due` is a recoverable temporary revoke; cancel-at-period-end keeps access through `cancelEffectiveAt` or the `nextBillingAt` fallback; missing both paid-through timestamps fails closed. Expired/effective cancellation is a permanent revoke. Explicit refund/manual revoke is never auto-restored by a later active provider snapshot.
 - Legacy Marketplace ingress and generic retries do not process unverified events. Reconciliation requires an explicit admin import of verified provider-export evidence; refund processing still requires the corresponding paid event. See [upgrade guidance](../development/CONFIGURATION.md#legacy-marketplace-unavailable-in-the-first-release).
 
+### Portaly Payment one-time refund callback
+
+Payment remains an automatic checkout/callback flow, separate from legacy Marketplace imports. `creator_subscription.payment.refunded` uses the authenticated `orderMerchantOrderNumber` to select the exact local order; provider `orderId` is not a local primary key. Mode, amount, currency, full refunded amount and any supplied session/subscription identifiers must agree. Only a local one-time plan with a stored Payment session is handled here; recurring per-charge refund reconciliation remains outside this slice.
+
+Successful refunds use the existing revocation transaction and deduplicated entitlement outbox. A refund received before checkout completion makes the pending order terminal, so late completion cannot grant access. Replayed refunds do not create another revocation outbox item. `creator_subscription.payment.refund_failed` does not revoke access. Missing local orders and database failures return a retryable response; malformed, conflicting or unsupported payloads are acknowledged without mutation and emit a reconciliation diagnostic. Operators must investigate those diagnostics rather than treating HTTP 200 as delivery proof.
+
+The transaction owner prevents a concurrent or stale cancellation from replacing an already-refunded status. Provider `orderId`/`paymentId` are validated as required fields, not stored as a new per-charge event ledger; deduplication here remains bounded to the exact local one-time order and its purchases.
+
+All callback branches reject an explicitly mismatched test/live mode before mutation. New Payment refund success requires an explicit mode; legacy callbacks without mode retain their existing compatibility behavior. See the [provider callback contract](https://github.com/portaly-ai/portaly-skills/blob/d2575623dd879553c59304f66d7a301f38c14879/skills/portaly-payment/references/api-contract.md). This does not enable live payments, change existing plans or complete a production migration.
+
 ## UI States
 
 - Checkout ready: a valid plan can start checkout.

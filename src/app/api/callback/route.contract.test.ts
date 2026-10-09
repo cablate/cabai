@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 const mocks = vi.hoisted(() => ({
   verifyCallback: vi.fn(),
@@ -77,6 +78,8 @@ vi.mock("@/lib/observability/capture", () => ({
   captureOperationalMessage: mocks.captureMessage,
 }));
 
+vi.mock("@/lib/event-tracking", () => ({ recordEvent: vi.fn() }));
+
 import { POST } from "./route";
 
 const order = {
@@ -132,6 +135,43 @@ function revokeCallbackRequest(): Request {
     },
     body: JSON.stringify({ event: "subscription.canceled", sessionId: "session-1" }),
   });
+}
+
+const refundEvent = "creator_subscription.payment.refunded";
+const refundPayload = {
+  event: refundEvent,
+  mode: "test",
+  orderId: "provider-order-1",
+  paymentId: "provider-payment-1",
+  orderMerchantOrderNumber: order.merchantOrderNumber,
+  amount: plan.amount,
+  currency: plan.currency,
+  refundedAmount: plan.amount,
+  refundedAt: "2026-10-09T01:02:03.000Z",
+};
+
+function eventRequest(event: string, payload: Record<string, unknown>): Request {
+  return new Request("https://cabai.example/api/callback", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-portaly-timestamp": "2026-10-09T01:02:03.000Z",
+      "x-portaly-signature": "valid-signature",
+      "x-portaly-event": event,
+    },
+    body: JSON.stringify({ event, ...payload }),
+  });
+}
+
+function refundRequest(overrides: Record<string, unknown> = {}): Request {
+  return eventRequest(refundEvent, { ...refundPayload, ...overrides });
+}
+
+function expectNoMutation() {
+  expect(mocks.revokeOrderEntitlement).not.toHaveBeenCalled();
+  expect(mocks.completeOrder).not.toHaveBeenCalled();
+  expect(mocks.dbUpdate).not.toHaveBeenCalled();
+  expect(mocks.writeAuditLog).not.toHaveBeenCalled();
 }
 
 beforeEach(() => {
@@ -299,5 +339,191 @@ describe("Portaly callback acknowledgement contract", () => {
     await expect(response.json()).resolves.toEqual({ ok: false });
     expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
     expect(mocks.revokeDiscordRolesForPlan).not.toHaveBeenCalled();
+  });
+});
+
+describe("Portaly Payment refund callback contract", () => {
+  const paymentOrder = {
+    ...order,
+    status: "completed",
+    providerMode: "test",
+    portalySessionId: "session-1",
+    subscriptionId: null,
+    paidAmount: plan.amount,
+    expectedAmount: plan.amount,
+  };
+
+  beforeEach(() => {
+    mocks.findOrder.mockResolvedValue(paymentOrder);
+    mocks.findPlan.mockResolvedValue({ ...plan, billingPeriod: "one-time" });
+  });
+
+  it.each(["completed", "pending", "refunded"])("revokes a fully verified %s order using only its merchant number", async (status) => {
+    mocks.findOrder.mockResolvedValue({ ...paymentOrder, status });
+    const response = await POST(refundRequest({ sessionId: "session-1" }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(mocks.findOrder).toHaveBeenCalledOnce();
+    const lookup = new PgDialect().sqlToQuery(mocks.findOrder.mock.calls[0]![0].where);
+    expect(lookup.sql).toContain('"merchant_order_number"');
+    expect(lookup.sql).not.toContain('"subscription_id"');
+    expect(lookup.sql).not.toContain('"portaly_session_id"');
+    expect(lookup.params).toEqual([order.merchantOrderNumber]);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledWith(expect.objectContaining({
+      orderId: order.id,
+      occurredAt: new Date(refundPayload.refundedAt),
+      orderChanges: expect.objectContaining({
+        status: "refunded",
+        refundAmount: refundPayload.refundedAmount,
+        refundedAt: new Date(refundPayload.refundedAt),
+      }),
+    }));
+    expect(mocks.completeOrder).not.toHaveBeenCalled();
+    expect(mocks.dbUpdate).not.toHaveBeenCalled();
+  });
+
+  it("accepts the reserved amount before checkout completion and legacy missing providerMode", async () => {
+    mocks.findOrder.mockResolvedValue({ ...paymentOrder, status: "pending", paidAmount: null, providerMode: null });
+    expect((await POST(refundRequest())).status).toBe(200);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+  });
+
+  it("accepts both optional identifiers only when both match the local order", async () => {
+    mocks.findOrder.mockResolvedValue({ ...paymentOrder, subscriptionId: "subscription-1" });
+    expect((await POST(refundRequest({ sessionId: "session-1", subscriptionId: "subscription-1" }))).status).toBe(200);
+    expect(mocks.findOrder).toHaveBeenCalledOnce();
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+  });
+
+  it("accepts a subscription identifier bound to the existing Payment session", async () => {
+    expect((await POST(refundRequest({ subscriptionId: "session-1" }))).status).toBe(200);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+  });
+
+  it("accepts integer zero refund evidence when the local paid amount is zero", async () => {
+    mocks.findOrder.mockResolvedValue({ ...paymentOrder, paidAmount: 0 });
+    expect((await POST(refundRequest({ amount: 0, refundedAmount: 0 }))).status).toBe(200);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a wrong session even when the supplied subscription matches", async () => {
+    mocks.findOrder.mockResolvedValue({ ...paymentOrder, subscriptionId: "subscription-1" });
+    expect((await POST(refundRequest({ sessionId: "session-other", subscriptionId: "subscription-1" }))).status).toBe(200);
+    expectNoMutation();
+  });
+
+  it.each([
+    ["mode", undefined], ["mode", "sandbox"],
+    ["orderId", undefined], ["orderId", ""], ["orderId", 1],
+    ["paymentId", undefined], ["paymentId", ""],
+    ["orderMerchantOrderNumber", undefined], ["orderMerchantOrderNumber", ""],
+    ["amount", undefined], ["amount", "9900"], ["amount", -1], ["amount", 1.5],
+    ["currency", undefined], ["currency", ""],
+    ["refundedAmount", undefined], ["refundedAmount", "9900"], ["refundedAmount", -1], ["refundedAmount", 1.5],
+    ["refundedAt", undefined], ["refundedAt", "not-a-date"], ["refundedAt", "2026-10-09"],
+    ["sessionId", 123], ["subscriptionId", 123],
+  ])("acknowledges malformed refund %s=%s before querying state", async (field, value) => {
+    expect((await POST(refundRequest({ [field]: value }))).status).toBe(200);
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+    expectNoMutation();
+  });
+
+  it.each([
+    { refundedAmount: plan.amount - 1 },
+    { amount: plan.amount + 1, refundedAmount: plan.amount + 1 },
+    { currency: "USD" },
+    { sessionId: "session-other" },
+    { subscriptionId: "subscription-other" },
+    { sessionId: "session-1", subscriptionId: "subscription-other" },
+  ])("does not revoke when payment evidence differs from the local order: %j", async (overrides) => {
+    expect((await POST(refundRequest(overrides))).status).toBe(200);
+    expect(mocks.findOrder).toHaveBeenCalledOnce();
+    expectNoMutation();
+  });
+
+  it.each([
+    { merchantOrderNumber: "merchant-other" },
+    { providerMode: "live" },
+    { portalySessionId: null },
+    { paidAmount: plan.amount - 1 },
+    { paidAmount: null, expectedAmount: null },
+  ])("does not revoke a locally mismatched or unbound order: %j", async (overrides) => {
+    mocks.findOrder.mockResolvedValue({ ...paymentOrder, ...overrides });
+    expect((await POST(refundRequest())).status).toBe(200);
+    expectNoMutation();
+  });
+
+  it.each(["monthly", "yearly"])("does not apply the one-time refund contract to %s plans", async (billingPeriod) => {
+    mocks.findPlan.mockResolvedValue({ ...plan, billingPeriod });
+    expect((await POST(refundRequest())).status).toBe(200);
+    expectNoMutation();
+  });
+
+  it("never resolves a refund from subscriptionId without the exact merchant order number", async () => {
+    expect((await POST(refundRequest({ orderMerchantOrderNumber: undefined, subscriptionId: "subscription-1" }))).status).toBe(200);
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+    expectNoMutation();
+  });
+
+  it("returns retryable 500 when the exact local order has not arrived yet", async () => {
+    mocks.findOrder.mockResolvedValue(undefined);
+    const response = await POST(refundRequest({ subscriptionId: "subscription-1" }));
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({ ok: false });
+    expect(mocks.findOrder).toHaveBeenCalledOnce();
+    expectNoMutation();
+  });
+
+  it("returns retryable 500 on a local lookup outage", async () => {
+    mocks.findOrder.mockRejectedValue(new Error("temporary database failure"));
+    expect((await POST(refundRequest())).status).toBe(500);
+    expectNoMutation();
+  });
+
+  it("returns retryable 500 when the entitlement revocation fails", async () => {
+    mocks.revokeOrderEntitlement.mockRejectedValue(new Error("temporary database failure"));
+    expect((await POST(refundRequest())).status).toBe(500);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+    expect(mocks.writeAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("returns retryable 500 when the order disappears during revocation", async () => {
+    mocks.revokeOrderEntitlement.mockResolvedValue({ found: false, purchasesRevoked: 0, transitionsEnsured: 0 });
+    expect((await POST(refundRequest())).status).toBe(500);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+  });
+
+  it("acknowledges refund_failed without looking up or revoking an order", async () => {
+    const event = "creator_subscription.payment.refund_failed";
+    expect((await POST(eventRequest(event, { ...refundPayload, event }))).status).toBe(200);
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+    expect(mocks.findPlan).not.toHaveBeenCalled();
+    expectNoMutation();
+  });
+});
+
+describe("Portaly callback global mode isolation", () => {
+  it.each([
+    "checkout.completed", "creator_subscription.checkout.completed",
+    "subscription.canceled", "subscription.expired", "checkout.refunded",
+    "creator_subscription.canceled", "creator_subscription.expired", refundEvent,
+  ])("rejects provided live mode before querying state for %s", async (event) => {
+    const response = await POST(eventRequest(event, { ...refundPayload, event, mode: "live", sessionId: "session-1" }));
+    expect(response.status).toBe(200);
+    expect(mocks.findOrder).not.toHaveBeenCalled();
+    expectNoMutation();
+  });
+
+  it("preserves legacy cancellation without a mode field", async () => {
+    mocks.findOrder.mockResolvedValue({ ...order, status: "completed", portalySessionId: "session-1" });
+    expect((await POST(revokeCallbackRequest())).status).toBe(200);
+    expect(mocks.revokeOrderEntitlement).toHaveBeenCalledOnce();
+  });
+
+  it("preserves legacy checkout without a mode field", async () => {
+    expect((await POST(callbackRequest({ mode: undefined }))).status).toBe(200);
+    expect(mocks.completeOrder).toHaveBeenCalledOnce();
   });
 });

@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, ne, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   ensureRequiredAuditLogInTransaction,
@@ -310,9 +310,20 @@ export async function revokeOrderEntitlement(input: {
     const [order] = await tx
       .update(orders)
       .set({ ...input.orderChanges, updatedAt: now })
-      .where(eq(orders.id, input.orderId))
+      .where(and(
+        eq(orders.id, input.orderId),
+        // Refund and cancellation callbacks may race. Keep the refund terminal
+        // at the write boundary, not merely in a caller's stale read.
+        input.orderChanges.status && input.orderChanges.status !== "refunded"
+          ? ne(orders.status, "refunded") : undefined,
+      ))
       .returning({ id: orders.id, userId: orders.userId, planId: orders.planId });
-    if (!order) return { found: false, purchasesRevoked: 0, transitionsEnsured: 0 };
+    if (!order) {
+      const existing = await tx.query.orders.findFirst({
+        where: eq(orders.id, input.orderId), columns: { id: true },
+      });
+      return { found: Boolean(existing), purchasesRevoked: 0, transitionsEnsured: 0 };
+    }
 
     const revoked = await tx
       .update(userPurchases)

@@ -62,6 +62,8 @@
 
 Marketplace 匯入若出現 `Existing marketplace order does not match the verified payment`，表示同編號已有訂單，但會員、方案、金額、幣別或完成狀態不一致。本次重試不會補發權益；請對照可信的供應商匯出與既有訂單，確認選定方案及退款狀態，不要刪訂單或改狀態來強行重試。預覽通過不等於匯入成功，仍要查看匯入結果的失敗列；完全相符且已完成的訂單可以安全重試補齊缺少的權益。
 
+Portaly Payment 與上述 Marketplace 是不同入口。一次性付款的新版 `creator_subscription.payment.refunded` 由 `/api/callback` 處理；`refund_failed` 不會撤權。若日誌顯示退款資料不完整、與本地訂單不符或需要逐期對帳，請核對供應商退款交易與本地 merchant order，不要只因回應 200 就判斷撤權成功。缺少本地訂單或資料庫暫時失敗會回 500 供重試。此處尚不支援訂閱逐期退款，不能用改事件名稱的方式強行套用。
+
 ## 需要修復或還原時
 
 ### Migration hash 不一致

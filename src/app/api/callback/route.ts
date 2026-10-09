@@ -12,7 +12,7 @@ import { customerEmailMismatch, validatePaymentConfirmation } from "@/lib/paymen
 import { createLogger } from "@/lib/logger";
 import { maskEmail } from "@/lib/log-redact";
 import { writeAuditLog } from "@/lib/audit";
-import { callbackPayloadSchema, callbackHeadersSchema } from "@/lib/validations/callback";
+import { callbackPayloadSchema, callbackHeadersSchema, paymentRefundPayloadSchema } from "@/lib/validations/callback";
 import { captureOperationalException, captureOperationalMessage } from "@/lib/observability/capture";
 import { recordEvent } from "@/lib/event-tracking";
 
@@ -141,6 +141,20 @@ async function handleCallback(request: Request) {
     || (payload as Record<string, unknown>).event !== event) {
     logger.warn("Callback event does not match authenticated body");
     return OK();
+  }
+
+  const signedBody = payload as Record<string, unknown>;
+  // Apply environment isolation before every branch, including legacy revoke.
+  if (signedBody.mode !== undefined && signedBody.mode !== PORTALY_MODE) {
+    logger.warn("Callback mode does not match this environment");
+    return OK();
+  }
+  if (event === "creator_subscription.payment.refund_failed") {
+    logger.warn("Provider refund failed; entitlement retained");
+    return OK();
+  }
+  if (event === "creator_subscription.payment.refunded") {
+    return handlePaymentRefund(signedBody);
   }
 
   // Event routing
@@ -353,6 +367,54 @@ async function handleCallback(request: Request) {
   }
 }
 
+async function handlePaymentRefund(payload: Record<string, unknown>): Promise<Response> {
+  const parsed = paymentRefundPayloadSchema.safeParse(payload);
+  if (!parsed.success) {
+    logger.warn("Payment refund payload is incomplete; reconciliation required");
+    return OK();
+  }
+  const body = parsed.data;
+  // Provider orderId is NOT our primary key. Never pick a subscription's first
+  // order: renewal payments can share a subscription but have different orders.
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.merchantOrderNumber, body.orderMerchantOrderNumber),
+  });
+  if (!order) return RETRYABLE_FAILURE();
+  if (!order.portalySessionId
+    || order.merchantOrderNumber !== body.orderMerchantOrderNumber
+    || (order.providerMode && order.providerMode !== body.mode)
+    || (body.sessionId && body.sessionId !== order.portalySessionId)
+    || (body.subscriptionId && body.subscriptionId !== (order.subscriptionId ?? order.portalySessionId))
+    || body.currency !== order.currency
+    || body.amount !== (order.paidAmount ?? order.expectedAmount)
+    || body.refundedAmount !== body.amount) {
+    logger.warn("Payment refund does not match local order; reconciliation required");
+    return OK();
+  }
+  const plan = await db.query.plans.findFirst({
+    where: eq(plans.id, order.planId), columns: { billingPeriod: true },
+  });
+  if (plan?.billingPeriod !== "one-time") {
+    logger.warn("Recurring payment refund requires per-charge reconciliation");
+    return OK();
+  }
+  const result = await revokeOrderEntitlement({
+    orderId: order.id,
+    source: "payment",
+    triggeredBy: "callback.portaly.payment.refunded",
+    revokedBy: "callback.portaly",
+    occurredAt: new Date(body.refundedAt),
+    orderChanges: {
+      status: "refunded", refundAmount: body.refundedAmount,
+      refundedAt: new Date(body.refundedAt),
+    },
+  });
+  // The existing transaction/outbox owner deduplicates by purchase/order. An
+  // early refund also marks a pending order terminal, blocking late completion.
+  if (!result.found) return RETRYABLE_FAILURE();
+  return OK();
+}
+
 /**
  * Handle subscription cancel/expired/refund events.
  * Payload format from Portaly for these events is not fully documented,
@@ -385,6 +447,9 @@ async function handleRevokeEvent(
     logger.warn("Revoke event: order not found", { event, sessionId, merchantOrderNumber, subscriptionId });
     return OK();
   }
+
+  // A later cancellation must not erase the terminal refund state.
+  if (order.status === "refunded" && !event.includes("refund")) return OK();
 
   const newStatus = event.includes("refund") ? "refunded" as const : "canceled" as const;
   const now = new Date();

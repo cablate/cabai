@@ -24,6 +24,8 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Fixed
 
+- **Payment refund callbacks:** handle the current Portaly one-time refund-success event against its exact local order, retain access on refund failure, reject conflicting payment evidence and prevent late checkout completion from granting a refunded order. Explicit test/live mismatches are rejected before all callback branches. Recurring per-charge refunds still require separate reconciliation.
+
 - **Marketplace payment replay:** an incomplete event can repair access only when the existing order matches its member, plan, amount and currency and is still completed. Conflicting or refunded orders fail without granting access. The order is locked while checking and repairing its purchase.
 
 - **Restore target checks:** reject URL-query routing overrides before accessing a backup. Only a single supported `sslmode` query parameter is accepted; this does not establish target isolation or unify database-client TLS behavior.

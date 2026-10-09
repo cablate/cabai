@@ -7,9 +7,9 @@
  * Real DB, mocks: Portaly signature, rate-limit, Discord.
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
-import { createTestUser, createTestPlan, createTestOrder, cleanTestData } from "@/test/helpers";
+import { createTestUser, createTestPlan, createTestOrder, createTestPurchase, cleanTestData } from "@/test/helpers";
 import { db } from "@/lib/db";
-import { orders } from "@/lib/db/schema";
+import { orders, userPurchases, entitlementOutbox } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // ─── Mocks (external services + rate-limit) ───
@@ -37,6 +37,7 @@ vi.mock("@/lib/discord", () => ({
 
 // Import route handler AFTER mocks are set up
 import { POST } from "@/app/api/callback/route";
+import { revokeOrderEntitlement } from "@/lib/entitlement-transitions";
 
 // ─── Helpers ───
 
@@ -77,6 +78,7 @@ beforeAll(async () => {
 
   const fixedPlan = await createTestPlan({
     name: "Fixed Plan",
+    billingPeriod: "one-time",
     amount: 9900,
     currency: "TWD",
     pricingType: "fixed",
@@ -255,5 +257,53 @@ describe("A5: Callback currency validation", () => {
 
     const dbOrder = await db.query.orders.findFirst({ where: eq(orders.id, order.id) });
     expect(dbOrder?.status).toBe("pending");
+  });
+});
+
+describe("Payment one-time refund outcomes", () => {
+  async function refundFixture(status: "completed" | "pending" = "completed") {
+    const order = await createTestOrder(userId, fixedPlanId, { status, paidAmount: status === "completed" ? 9900 : null, expectedAmount: 9900, portalySessionId: `refund-session-${crypto.randomUUID()}` });
+    await db.update(orders).set({ providerMode: "test" }).where(eq(orders.id, order.id));
+    return { order, payload: { mode: "test", orderId: `provider-${order.id}`, paymentId: `payment-${order.id}`, orderMerchantOrderNumber: order.merchantOrderNumber, amount: 9900, refundedAmount: 9900, currency: "TWD", refundedAt: "2026-10-09T00:00:00.000Z" } };
+  }
+
+  it("refunds only the matched order and deduplicates its outbox on replay", async () => {
+    const { order, payload } = await refundFixture();
+    const purchase = await createTestPurchase(userId, fixedPlanId, order.id);
+    const otherOrder = await createTestOrder(userId, fixedPlanId, { status: "completed", paidAmount: 9900 });
+    const otherPurchase = await createTestPurchase(userId, fixedPlanId, otherOrder.id);
+    for (let i = 0; i < 2; i++) {
+      expect((await POST(callbackRequest(payload, "creator_subscription.payment.refunded"))).status).toBe(200);
+    }
+    const stored = await db.query.orders.findFirst({ where: eq(orders.id, order.id) });
+    expect(stored?.status).toBe("refunded");
+    expect(stored?.refundAmount).toBe(9900);
+    expect((await db.query.userPurchases.findFirst({ where: eq(userPurchases.id, purchase.id) }))?.revokedAt).not.toBeNull();
+    expect((await db.query.userPurchases.findFirst({ where: eq(userPurchases.id, otherPurchase.id) }))?.revokedAt).toBeNull();
+    const outbox = await db.select().from(entitlementOutbox).where(eq(entitlementOutbox.orderId, order.id));
+    expect(outbox.filter(row => row.eventType === "entitlement.revoked")).toHaveLength(1);
+  });
+
+  it("keeps an early refund terminal when checkout completion arrives later", async () => {
+    const { order, payload } = await refundFixture("pending");
+    expect((await POST(callbackRequest(payload, "creator_subscription.payment.refunded"))).status).toBe(200);
+    expect((await POST(callbackRequest({ merchantOrderNumber: order.merchantOrderNumber, amount: 9900, currency: "TWD", planId: fixedPlanId }))).status).toBe(200);
+    expect((await db.query.orders.findFirst({ where: eq(orders.id, order.id) }))?.status).toBe("refunded");
+    expect(await db.select().from(userPurchases).where(eq(userPurchases.orderId, order.id))).toHaveLength(0);
+    expect(await db.select().from(entitlementOutbox).where(eq(entitlementOutbox.orderId, order.id))).toHaveLength(1);
+  });
+
+  it("keeps refund terminal against a concurrent cancellation and its stale retry", async () => {
+    const { order, payload } = await refundFixture();
+    await createTestPurchase(userId, fixedPlanId, order.id);
+    const cancel = () => revokeOrderEntitlement({ orderId: order.id, source: "payment", triggeredBy: "test.cancel", revokedBy: "test", orderChanges: { status: "canceled" } });
+    const [response] = await Promise.all([
+      POST(callbackRequest(payload, "creator_subscription.payment.refunded")), cancel(),
+    ]);
+    expect(response.status).toBe(200);
+    await cancel();
+    expect((await db.query.orders.findFirst({ where: eq(orders.id, order.id) }))?.status).toBe("refunded");
+    const outbox = await db.select().from(entitlementOutbox).where(eq(entitlementOutbox.orderId, order.id));
+    expect(outbox.filter(row => row.eventType === "entitlement.revoked")).toHaveLength(1);
   });
 });
