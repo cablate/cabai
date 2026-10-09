@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { signIn } from "next-auth/react";
 import { BRAND_INITIAL } from "@/lib/constants";
+import type { FirstAdminBootstrapStatus } from "@/lib/first-admin-bootstrap";
 
 const ADMIN_DESTINATION = "/admin";
 
-export function FirstAdminBootstrapCard({ enabled }: { enabled: boolean }) {
+export function FirstAdminBootstrapCard({ status }: { status: FirstAdminBootstrapStatus }) {
   const [email, setEmail] = useState("");
   const [token, setToken] = useState("");
   const [showToken, setShowToken] = useState(false);
@@ -53,7 +54,28 @@ export function FirstAdminBootstrapCard({ enabled }: { enabled: boolean }) {
           </p>
         </div>
 
-        {!enabled ? (
+        {status === "completed" ? (
+          <div className="space-y-4">
+            <p className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-700">
+              首次管理員設定已完成。只要站點已有管理員，就無法再次使用初始化權杖建立管理員。
+            </p>
+            <p className="text-sm leading-relaxed text-zinc-500">
+              現在即可進入管理後台，不必先移除 token 或重啟服務。部署中的 ADMIN_BOOTSTRAP_TOKEN 可於後續維護時移除。
+            </p>
+            <Link prefetch={false}
+              href={ADMIN_DESTINATION}
+              className="flex min-h-12 w-full items-center justify-center rounded-xl bg-zinc-900 px-5 py-3.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+            >
+              進入管理後台
+            </Link>
+            <Link prefetch={false}
+              href="/login"
+              className="flex min-h-12 w-full items-center justify-center rounded-xl border border-zinc-200 px-5 py-3.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+            >
+              回到 Google 登入
+            </Link>
+          </div>
+        ) : status === "disabled" ? (
           <div className="space-y-4">
             <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
               首次管理員設定目前未啟用。請先設定 ADMIN_BOOTSTRAP_TOKEN，或使用既有登入流程。
@@ -136,7 +158,7 @@ export function FirstAdminBootstrapCard({ enabled }: { enabled: boolean }) {
             </button>
 
             <p className="text-center text-xs leading-relaxed text-zinc-400">
-              完成後請移除部署中的 ADMIN_BOOTSTRAP_TOKEN。
+              建立後即可進入後台；只要已有管理員，就無法再次初始化。ADMIN_BOOTSTRAP_TOKEN 可於後續維護時移除。
             </p>
           </form>
         )}

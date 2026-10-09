@@ -5,6 +5,7 @@ import { users } from "@/lib/db/schema";
 import { cleanTestData, createTestUser } from "@/test/helpers";
 import {
   bootstrapFirstAdmin,
+  getFirstAdminBootstrapStatus,
 } from "./first-admin-bootstrap";
 import type { FirstAdminBootstrapError } from "./first-admin-bootstrap";
 
@@ -17,6 +18,7 @@ beforeAll(() => {
 
 beforeEach(async () => {
   await cleanTestData();
+  process.env.ADMIN_BOOTSTRAP_TOKEN = token;
 });
 
 afterAll(async () => {
@@ -26,6 +28,23 @@ afterAll(async () => {
 });
 
 describe("first-admin bootstrap persistence", () => {
+  it("is ready only when no admin exists and a valid token is configured", async () => {
+    expect(await getFirstAdminBootstrapStatus()).toBe("ready");
+    await createTestUser({ email: "test-bootstrap-member@example.com", role: "member" });
+    expect(await getFirstAdminBootstrapStatus()).toBe("ready");
+    delete process.env.ADMIN_BOOTSTRAP_TOKEN;
+    expect(await getFirstAdminBootstrapStatus()).toBe("disabled");
+    process.env.ADMIN_BOOTSTRAP_TOKEN = "too-short";
+    expect(await getFirstAdminBootstrapStatus()).toBe("disabled");
+  });
+
+  it("reports completed for an existing admin regardless of token configuration", async () => {
+    await createTestUser({ email: "test-bootstrap-admin@example.com", role: "admin" });
+    expect(await getFirstAdminBootstrapStatus()).toBe("completed");
+    delete process.env.ADMIN_BOOTSTRAP_TOKEN;
+    expect(await getFirstAdminBootstrapStatus()).toBe("completed");
+  });
+
   it("creates the first admin and rejects a second bootstrap", async () => {
     const created = await bootstrapFirstAdmin({
       email: "test-bootstrap-owner@example.com",
@@ -33,6 +52,8 @@ describe("first-admin bootstrap persistence", () => {
     });
 
     expect(created.email).toBe("test-bootstrap-owner@example.com");
+    expect(process.env.ADMIN_BOOTSTRAP_TOKEN).toBe(token);
+    expect(await getFirstAdminBootstrapStatus()).toBe("completed");
     await expect(
       bootstrapFirstAdmin({ email: "test-bootstrap-second@example.com", token }),
     ).rejects.toMatchObject({ code: "already_completed" } satisfies Partial<FirstAdminBootstrapError>);
@@ -42,6 +63,16 @@ describe("first-admin bootstrap persistence", () => {
       .from(users)
       .where(eq(users.role, "admin"));
     expect(admins).toEqual([{ email: created.email, role: "admin" }]);
+  });
+
+  it("returns to ready when the last admin no longer exists and the token remains", async () => {
+    const existing = await createTestUser({ email: "test-bootstrap-removed@example.com", role: "admin" });
+    await db.update(users).set({ role: "member" }).where(eq(users.id, existing.id));
+
+    expect(await getFirstAdminBootstrapStatus()).toBe("ready");
+    const promoted = await bootstrapFirstAdmin({ email: existing.email, token });
+    expect(promoted.id).toBe(existing.id);
+    expect(await getFirstAdminBootstrapStatus()).toBe("completed");
   });
 
   it("promotes an existing member without creating a duplicate user", async () => {

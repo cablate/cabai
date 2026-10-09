@@ -106,7 +106,7 @@ For `redirect_uri_mismatch`, compare the actual redirect URI with the console an
 
 開啟自己站點的 `/setup/admin`，在表單填入管理員 email 與 token。可升級同 email 的既有使用者，或建立新管理員；選擇自己控制且未來能用 Google 登入的 email。成功後應進入 `/admin`，可編輯內容並重新整理確認讀回。這個初次 session 不需要 Google credentials，但 session 結束後的日常登入需要 Google；bootstrap 不能取代一般會員的登入與權益驗收。
 
-建立首位 admin 後，從私有 env 移除 token 並重新建立／啟動 app；bootstrap provider 應不再出現在 `/api/auth/providers`。token 不是長期管理員密碼，不應保留、分享或放 URL。既有 admin 存在時 bootstrap 會拒絕再次建立；不要為重跑測試刪除正式管理員。
+建立首位 admin 後，只要資料庫仍有 admin，bootstrap 就會拒絕再次建立；設定頁會顯示已完成，不再要求輸入 token。可以直接使用網站，不必為清理 token 立即重啟。下次維護設定時再移除私有 env 的 token，重啟後 bootstrap provider 才會從 `/api/auth/providers` 消失。這不是把環境變數自動刪除，也不是永久註銷 token：若刻意移除全部 admin，須先移除 token，避免重新開啟初始化。token 不是長期管理員密碼，不分享、不放 URL；不要為重跑測試刪除正式管理員。
 
 2026-10-08 隔離 Linux 容器已用中性帳號確認無效 token 拒絕、首 admin session／admin HTTP page 成功、第二次 bootstrap 拒絕，以及移除 token 後 provider 消失。這不是 Google OAuth 或一般會員／管理員 browser 完整驗收。
 

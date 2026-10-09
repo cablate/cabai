@@ -33,6 +33,23 @@ export function isFirstAdminBootstrapConfigured(
   return getFirstAdminBootstrapToken(environment) !== null;
 }
 
+export type FirstAdminBootstrapStatus = "ready" | "disabled" | "completed";
+
+export async function getFirstAdminBootstrapStatus(
+  environment: Record<string, string | undefined> = process.env,
+): Promise<FirstAdminBootstrapStatus> {
+  const [existingAdmin] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.role, "admin"))
+    .limit(1);
+
+  // This is presentation state, not the authorization check. The transaction
+  // below must still reject races and direct requests while an admin exists.
+  if (existingAdmin) return "completed";
+  return isFirstAdminBootstrapConfigured(environment) ? "ready" : "disabled";
+}
+
 export function bootstrapTokenMatches(
   submittedToken: string,
   environment: Record<string, string | undefined> = process.env,

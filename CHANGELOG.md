@@ -18,6 +18,8 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Changed
 
+- **First-admin setup:** once an administrator exists, the setup page shows completion instead of another token form. Continue using the site without an immediate token-cleanup restart; remove the unused environment token during later maintenance, and before intentionally removing all administrators.
+
 - **One shared product:** Apache-2.0 software and separately licensed neutral demo; maintainer and self-host deployments share the same mainline, using configuration rather than private feature forks.
 - **Operator-owned defaults:** creator/contact identity, Kit subscription identifiers, Agent origin and maintenance Worker targets no longer implicitly select maintainer services. Local storage is the minimal default; external services, backup writes and jobs are opt-in.
 - **Readability and maintenance:** learner/admin contrast tokens improved; typed catalog/progress query owners, route boundary registry and migration integrity checks clarify implementation ownership. CI covers neutral setup/tests/build/smoke without commercial credentials, with hosted execution still requiring a configured repository.
