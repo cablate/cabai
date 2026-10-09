@@ -68,6 +68,10 @@ All callback branches reject an explicitly mismatched test/live mode before muta
 
 ## UI States
 
+### Existing-product Payment conversion
+
+An existing manual one-time product can keep its local ID while its gateway changes to Portaly with a validated, active TWD one-time dynamic provider plan. The purchase button is a separate setting: switch it from external to internal only after mapping succeeds. Historical orders, purchases and course links remain attached to the same local product; conversion must not re-grant or revoke them. A failed provider validation leaves the existing mapping and historical access unchanged. See the [operator rehearsal sequence](../development/CONFIGURATION.md#move-an-existing-product-to-portaly-payment).
+
 - Checkout ready: a valid plan can start checkout.
 - Initializing: a second request receives an explicit temporary response and may retry; it does not create another provider session.
 - Reuse: an existing compatible pending checkout redirects to its stored provider URL.
@@ -139,6 +143,7 @@ Then the shared role remains while the other plan still grants access
 ```yaml
 test_mapping:
   integration:
+    - src/lib/__tests__/payment-cutover.integration.test.ts
     - src/lib/__tests__/checkout-reservation.integration.test.ts
     - src/lib/__tests__/entitlement-outbox.integration.test.ts
     - src/lib/__tests__/subscription-entitlement.integration.test.ts

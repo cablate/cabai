@@ -33,7 +33,7 @@
 | Migration 阻止啟動 | DB 連線、migration tag、ledger/hash | 依[維運指南](DEPLOYMENT-AND-OPERATIONS.md#inherited-migration-ledger-compatibility)查差異，用新 migration 修正。 |
 | 上傳或讀檔失敗 | 儲存路徑、volume/R2 設定、媒體登錄、權限與連結期限 | 確認物件與登錄資料一致，再重新取得有權限的連結。 |
 | Skill 無法發布或下載 | readiness issues、media 綁定、物件大小、checksum、ZIP 檢查 | 修正失敗項目後重新驗證，保留原本的公開／登入存取政策。 |
-| 舊 Marketplace 回呼固定回 503 | 是否仍使用已停用的舊入口 | 依[升級說明](../development/CONFIGURATION.md#legacy-marketplace-unavailable-in-the-first-release)暫停投遞並核對匯入。 |
+| 舊 Marketplace 回呼固定回 503 | 是否仍使用已停用的舊入口 | 不把 503 當成交付完成；依[升級說明](../development/CONFIGURATION.md#legacy-marketplace-unavailable-in-the-first-release)核對舊單，並安排新購買流程後退場舊投遞。 |
 | Discord 監控通知沒收到 | Worker 是否啟用監控、冷卻時間、bot/channel 與投遞結果 | 區分尚未達通知條件和通知投遞失敗。 |
 | Sentry 沒有事件 | DSN、capture 設定與資料清理規則 | 未設定 DSN 就是停用；若要啟用，再送測試事件確認。 |
 
