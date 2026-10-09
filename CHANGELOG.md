@@ -24,6 +24,8 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Fixed
 
+- **Marketplace payment replay:** an incomplete event can repair access only when the existing order matches its member, plan, amount and currency and is still completed. Conflicting or refunded orders fail without granting access. The order is locked while checking and repairing its purchase.
+
 - **Restore target checks:** reject URL-query routing overrides before accessing a backup. Only a single supported `sslmode` query parameter is accepted; this does not establish target isolation or unify database-client TLS behavior.
 
 - **Direct container image cache:** the non-root runtime can write disposable Next.js image cache without Compose mounts; application code stays root-owned. Read-only deployments still require a writable cache mount. CI now probes both bare-image and mounted filesystem boundaries.

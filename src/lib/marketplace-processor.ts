@@ -160,22 +160,33 @@ export async function processMarketplaceEvent(
         .returning({ id: orders.id });
 
       if (!order) {
-        // Order already exists (idempotent)
-        const existing = await tx.query.orders.findFirst({
-          where: eq(orders.merchantOrderNumber, merchantOrderNumber),
-          columns: { id: true },
-        });
-        if (existing) {
-          await ensurePaymentPurchaseInTransaction(tx, {
-            userId,
-            planId: mapping.planId,
-            orderId: existing.id,
-            source: "marketplace",
-            triggeredBy: "marketplace.paid-replay",
-            grantedAt: event.portalyCreatedAt ?? undefined,
-          });
+        // A duplicate number is not proof of an equivalent payment. Lock the
+        // order through the grant so a concurrent refund cannot slip between
+        // this check and purchase creation.
+        const [existing] = await tx.select({
+          id: orders.id,
+          userId: orders.userId,
+          planId: orders.planId,
+          status: orders.status,
+          paidAmount: orders.paidAmount,
+          currency: orders.currency,
+        }).from(orders)
+          .where(eq(orders.merchantOrderNumber, merchantOrderNumber))
+          .for("update");
+        if (!existing || existing.userId !== userId
+          || existing.planId !== mapping.planId || existing.status !== "completed"
+          || existing.paidAmount !== event.amount || existing.currency !== event.currency) {
+          throw new Error("Existing marketplace order does not match the verified payment; reconciliation is required.");
         }
-        return { orderId: existing?.id ?? null, created: false };
+        await ensurePaymentPurchaseInTransaction(tx, {
+          userId,
+          planId: mapping.planId,
+          orderId: existing.id,
+          source: "marketplace",
+          triggeredBy: "marketplace.paid-replay",
+          grantedAt: event.portalyCreatedAt ?? undefined,
+        });
+        return { orderId: existing.id, created: false };
       }
 
       await ensurePaymentPurchaseInTransaction(tx, {

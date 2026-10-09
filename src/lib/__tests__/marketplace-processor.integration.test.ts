@@ -7,7 +7,7 @@ import crypto from "node:crypto";
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   createTestPlan, createTestProductMapping,
-  createTestMarketplaceEvent, cleanTestData,
+  createTestMarketplaceEvent, createTestUser, createTestPurchase, cleanTestData,
 } from "@/test/helpers";
 import {
   processMarketplaceEvent,
@@ -15,7 +15,7 @@ import {
 } from "@/lib/marketplace-processor";
 import { applyPortalyPurchaseImport } from "@/lib/portaly-purchase-import";
 import { db } from "@/lib/db";
-import { orders, portalyMarketplaceEvents } from "@/lib/db/schema";
+import { orders, portalyMarketplaceEvents, userPurchases } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // Mock external services
@@ -205,4 +205,49 @@ it("only processes a quarantined event type confirmed by the admin export", asyn
   expect((await db.query.orders.findFirst({ where: eq(orders.id, stored!.createdOrderId!) }))?.status).toBe("completed");
   expect((await importStatus("refund")).processedRows).toBe(1);
   expect((await db.query.orders.findFirst({ where: eq(orders.id, stored!.createdOrderId!) }))?.status).toBe("refunded");
+});
+
+describe("Marketplace paid replay order binding", () => {
+  async function fixture(status: "completed" | "refunded" = "completed") {
+    const user = await createTestUser();
+    const merchantId = `replay-${crypto.randomUUID()}`;
+    const [order] = await db.insert(orders).values({
+      userId: user.id, planId, merchantOrderNumber: `mkt-${merchantId}`,
+      status, paidAmount: 100, currency: "TWD",
+    }).returning({ id: orders.id });
+    const event = await createTestMarketplaceEvent({
+      portalyOrderId: merchantId, customerEmail: user.email, amount: 100,
+      status: "pending_mapping",
+    });
+    return { user, order: order!, event };
+  }
+
+  it("does not grant another plan when an incomplete event already has an order", async () => {
+    const { user, order, event } = await fixture();
+    const original = await createTestPurchase(user.id, planId, order.id);
+    const otherPlan = await createTestPlan({ name: "Other synthetic plan" });
+    const result = await processMarketplaceEvent(event.id, { verifiedImport: true, planIdOverride: otherPlan.id });
+    expect(result.status).toBe("failed");
+    const purchases = await db.select().from(userPurchases).where(eq(userPurchases.orderId, order.id));
+    expect(purchases).toHaveLength(1);
+    expect(purchases[0]).toEqual(expect.objectContaining({ id: original.id, planId, revokedAt: null }));
+    const stored = await db.query.orders.findFirst({ where: eq(orders.id, order.id) });
+    expect(stored?.planId).toBe(planId);
+    expect(stored?.status).toBe("completed");
+  });
+
+  it("repairs a matching completed order only once", async () => {
+    const { order, event } = await fixture();
+    expect((await processMarketplaceEvent(event.id, { verifiedImport: true, planIdOverride: planId })).success).toBe(true);
+    await db.update(portalyMarketplaceEvents).set({ status: "pending" }).where(eq(portalyMarketplaceEvents.id, event.id));
+    expect((await processMarketplaceEvent(event.id, { verifiedImport: true, planIdOverride: planId })).success).toBe(true);
+    expect(await db.select().from(userPurchases).where(eq(userPurchases.orderId, order.id))).toHaveLength(1);
+  });
+
+  it("never regrants a refunded order through an incomplete paid event", async () => {
+    const { order, event } = await fixture("refunded");
+    expect((await processMarketplaceEvent(event.id, { verifiedImport: true, planIdOverride: planId })).status).toBe("failed");
+    expect(await db.select().from(userPurchases).where(eq(userPurchases.orderId, order.id))).toHaveLength(0);
+    expect((await db.query.orders.findFirst({ where: eq(orders.id, order.id) }))?.status).toBe("refunded");
+  });
 });
