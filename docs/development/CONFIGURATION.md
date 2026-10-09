@@ -42,6 +42,8 @@ For a local build, place **public, rights-cleared images only** in ignored `publ
 
 `NEXT_PUBLIC_*` settings are compiled into client code. Restarting an already-built image does not change its branding: rebuild from the same commit with the intended public values. Runtime-only contact/legal/provider secrets retain their existing configuration boundary. No product source edits are required, but this is not runtime theme switching or a multi-tenant system.
 
+`NEXT_PUBLIC_APP_URL` must also be present **at build time**, not only at runtime: client-side Agent connection prompts embed this canonical origin. The Dockerfile accepts `--build-arg NEXT_PUBLIC_APP_URL=https://learn.example.com`; reference Compose requires and forwards it from the interpolation environment (`--env-file`). Keep this value identical to the runtime canonical origin and auth origins. Changing only runtime environment does not repair an image already built with a missing or incorrect client origin; rebuild it.
+
 The application generates `/manifest.webmanifest` from the shared site identity. Logo and description settings update site metadata; they do not rewrite your authored pages or course content.
 
 另外設定 `SITE_LEGAL_NAME`（法律／營運名稱）、`CONTACT_EMAIL`（聯絡信箱）與 `SITE_DEFAULT_LOCALE`（例如 `zh-TW`）。這三項由 runtime 讀取，不要留著範例聯絡資訊公開上線。開發環境修改後重啟；Compose 修改後重新建立 app 容器。

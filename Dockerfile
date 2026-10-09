@@ -18,6 +18,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 FROM base AS builder
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_APP_URL="http://localhost:3000"
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ARG NEXT_PUBLIC_ASSET_HOST=""
 ENV NEXT_PUBLIC_ASSET_HOST=${NEXT_PUBLIC_ASSET_HOST}
 ARG NEXT_PUBLIC_SITE_NAME=""

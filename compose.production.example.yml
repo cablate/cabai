@@ -4,6 +4,7 @@ x-cabai-image: &cabai-image
     context: .
     dockerfile: Dockerfile
     args:
+      NEXT_PUBLIC_APP_URL: "${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL to the public application origin}"
       NEXT_PUBLIC_ASSET_HOST: "${NEXT_PUBLIC_ASSET_HOST:-}"
       NEXT_PUBLIC_SITE_NAME: "${NEXT_PUBLIC_SITE_NAME:-}"
       NEXT_PUBLIC_SITE_INITIAL: "${NEXT_PUBLIC_SITE_INITIAL:-}"

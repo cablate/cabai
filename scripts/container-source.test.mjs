@@ -85,6 +85,18 @@ test("Docker context also excludes operator state without blocking public brandi
   assert.equal(rules.includes("public"), false);
 });
 
+test("container builds receive the canonical public origin before client compilation", async () => {
+  const dockerfile = await readFile(new URL("../Dockerfile", import.meta.url), "utf8");
+  const buildStage = dockerfile.slice(dockerfile.indexOf("FROM base AS builder"), dockerfile.indexOf("FROM node:22-bookworm-slim AS runtime"));
+  assert.match(buildStage, /ARG NEXT_PUBLIC_APP_URL="http:\/\/localhost:3000"\r?\nENV NEXT_PUBLIC_APP_URL=\$\{NEXT_PUBLIC_APP_URL\}/);
+  assert.ok(buildStage.indexOf("ENV NEXT_PUBLIC_APP_URL=") < buildStage.indexOf("RUN npm run build"));
+  const compose = await readFile(new URL("../compose.production.example.yml", import.meta.url), "utf8");
+  const buildArgs = compose.slice(compose.indexOf("    args:"), compose.indexOf("\nservices:"));
+  assert.match(buildArgs, /NEXT_PUBLIC_APP_URL: "\$\{NEXT_PUBLIC_APP_URL:\?Set NEXT_PUBLIC_APP_URL to the public application origin\}"/);
+  const clientPrompt = await readFile(new URL("../src/lib/agent/prompt-copy.ts", import.meta.url), "utf8");
+  assert.match(clientPrompt, /process\.env\.NEXT_PUBLIC_APP_URL/);
+});
+
 test("Git preserves LF shell entrypoints across Windows checkouts", async () => {
   const attributes = await readFile(new URL("../.gitattributes", import.meta.url), "utf8");
   assert.match(attributes, /^\*\.sh text eol=lf$/m);
