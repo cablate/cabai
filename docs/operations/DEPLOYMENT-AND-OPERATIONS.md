@@ -138,6 +138,10 @@ Before a persistent change, establish an independently verified backup, restore 
 
 Database dumps do not include local/R2 media bytes. Recover storage objects and their registry state together, then verify checksums and authorization. Restore drills must use a pre-created empty target distinct from the source; never clear production to make a drill pass.
 
+For `db:restore:drill`, put the target host, port and credentials in the URL itself, not in query parameters. Only a single `sslmode` query parameter is supported (`disable`, `prefer`, `require`, `verify-ca` or `verify-full`); other parameters are rejected before reading a backup. This prevents the database preflight and the restore command from interpreting routing overrides differently. A matching confirmation name and a different hostname are still not proof of isolation: verify the actual target resource, including DNS aliases, before enabling restore writes.
+
+Run the drill in a dedicated shell without inherited connection-routing settings such as `PGHOSTADDR` or `PGSERVICE`. The Node preflight and `psql` do not interpret every TLS mode identically; validate certificate requirements on the isolated target rather than assuming that accepting `sslmode` makes their behavior identical.
+
 ### Local storage recovery: what must travel together
 
 For the reference single-instance/local-storage profile, retain a consistent set of:

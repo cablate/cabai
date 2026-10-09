@@ -24,6 +24,8 @@ The first-release candidate makes the existing creator/member application reprod
 
 ### Fixed
 
+- **Restore target checks:** reject URL-query routing overrides before accessing a backup. Only a single supported `sslmode` query parameter is accepted; this does not establish target isolation or unify database-client TLS behavior.
+
 - **Direct container image cache:** the non-root runtime can write disposable Next.js image cache without Compose mounts; application code stays root-owned. Read-only deployments still require a writable cache mount. CI now probes both bare-image and mounted filesystem boundaries.
 
 - **Cross-platform migrations:** SQL checkouts now retain LF bytes on Windows and Linux, preventing Git newline conversion from changing Drizzle migration hashes. Existing databases with mismatched hashes still require an audit; no ledger rewrite or hash-check bypass is applied.

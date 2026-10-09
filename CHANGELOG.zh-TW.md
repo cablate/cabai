@@ -24,6 +24,8 @@
 
 ### 修正
 
+- **還原目標檢查：** 讀取備份前拒絕 URL query 的連線路由覆寫，只接受單一支援的 `sslmode` 參數；這不代表已證明目標隔離或統一兩種資料庫工具的 TLS 行為。
+
 - **直接啟動容器的快取：** 非 root 執行者不依賴 Compose 掛載也能寫入可丟棄的 Next.js 圖片快取；應用程式碼仍由 root 擁有。唯讀部署仍須提供可寫的快取掛載。CI 同時檢查直接啟動映像與掛載後的檔案系統邊界。
 
 - **跨平台 migration：** Windows 與 Linux checkout 的 SQL 統一保留 LF 位元組，避免 Git 換行轉換造成 Drizzle migration 雜湊不同。既有資料庫若已出現 hash 不符仍須另行稽核；不改寫 ledger，也不略過 hash 檢查。

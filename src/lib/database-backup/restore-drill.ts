@@ -27,6 +27,15 @@ export function assertRestoreTarget(options: {
 }): URL {
   const url = new URL(options.targetUrl);
   if (url.protocol !== "postgres:" && url.protocol !== "postgresql:") throw new Error("Restore target must be PostgreSQL.");
+  // node-postgres accepts query-string connection overrides; psql below uses
+  // the URL authority instead. Do not check one target and restore another.
+  for (const key of url.searchParams.keys()) {
+    if (key !== "sslmode") throw new Error("Restore target URL only supports the sslmode query parameter; put connection details in the URL authority.");
+  }
+  const sslModes = url.searchParams.getAll("sslmode");
+  if (sslModes.length > 1 || sslModes.some((mode) => !["disable", "prefer", "require", "verify-ca", "verify-full"].includes(mode))) {
+    throw new Error("Restore target URL must specify at most one supported sslmode.");
+  }
   const database = decodeURIComponent(url.pathname.slice(1));
   if (!/^[A-Za-z0-9_]+_restore_drill(?:_[A-Za-z0-9_]+)?$/.test(database)) {
     throw new Error("Restore target database name must contain the _restore_drill suffix.");
