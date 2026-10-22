@@ -137,7 +137,7 @@
   },
   "overrides": {
     "linkify-it": "5.0.2",
-    "markdown-it": "14.3.1",
+    "markdown-it": "14.3.3",
     "shell-quote": "1.11.0",
     "ws": "8.21.0"
   },
